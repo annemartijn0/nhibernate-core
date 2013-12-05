@@ -1,6 +1,6 @@
 using System;
 using System.Collections.Generic;
-using System.Data;
+using System.Data;using System.Data.Common;
 using System.Data.Common;
 
 using NHibernate.Cfg;
@@ -147,7 +147,7 @@ namespace NHibernate.Tool.hbm2ddl
 			}
 
 			DbConnection connection;
-			IDbCommand stmt = null;
+			DbCommand stmt = null;
 
 			exceptions.Clear();
 

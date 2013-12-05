@@ -1,4 +1,4 @@
-using System.Data;
+using System.Data;using System.Data.Common;
 using NHibernate.AdoNet;
 using NHibernate.SqlTypes;
 
@@ -42,7 +42,7 @@ namespace NHibernate.Driver
 		/// This adds logic to ensure that a DbType.Boolean parameter is not created since
 		/// ODP.NET doesn't support it.
 		/// </remarks>
-		protected override void InitializeParameter(IDbDataParameter dbParam, string name, SqlType sqlType)
+		protected override void InitializeParameter(DbParameter dbParam, string name, SqlType sqlType)
 		{
 			// if the parameter coming in contains a boolean then we need to convert it 
 			// to another type since ODP.NET doesn't support DbType.Boolean

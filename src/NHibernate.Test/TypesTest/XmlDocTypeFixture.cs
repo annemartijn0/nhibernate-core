@@ -1,4 +1,4 @@
-using System.Data;
+using System.Data;using System.Data.Common;
 using System.Xml;
 using NHibernate.SqlTypes;
 using NHibernate.Type;

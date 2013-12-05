@@ -1,5 +1,5 @@
 using System;
-using System.Data;
+using System.Data;using System.Data.Common;
 using System.Data.Common;
 
 using NHibernate.Engine;
@@ -98,8 +98,8 @@ namespace NHibernate.Id.Enhanced
 				_owner._accessCounter++;
 				try
 				{
-					IDbCommand st = _session.Batcher.PrepareCommand(CommandType.Text, _owner._sql, SqlTypeFactory.NoTypes);
-					IDataReader rs = null;
+					DbCommand st = _session.Batcher.PrepareCommand(CommandType.Text, _owner._sql, SqlTypeFactory.NoTypes);
+					DbDataReader rs = null;
 					try
 					{
 						rs = _session.Batcher.ExecuteReader(st);

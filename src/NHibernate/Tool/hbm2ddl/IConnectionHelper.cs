@@ -1,4 +1,4 @@
-using System.Data;
+using System.Data;using System.Data.Common;
 using System.Data.Common;
 
 namespace NHibernate.Tool.hbm2ddl

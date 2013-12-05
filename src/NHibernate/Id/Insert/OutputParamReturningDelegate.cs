@@ -1,4 +1,4 @@
-using System.Data;
+using System.Data;using System.Data.Common;
 using NHibernate.Dialect;
 using NHibernate.Engine;
 using NHibernate.SqlCommand;
@@ -39,11 +39,11 @@ namespace NHibernate.Id.Insert
 			return new ReturningIdentifierInsert(factory, idColumnName, ReturnParameterName);
 		}
 
-		protected internal override IDbCommand Prepare(SqlCommandInfo insertSQL, ISessionImplementor session)
+		protected internal override DbCommand Prepare(SqlCommandInfo insertSQL, ISessionImplementor session)
 		{
-			IDbCommand command = session.Batcher.PrepareCommand(CommandType.Text, insertSQL.Text, insertSQL.ParameterTypes);
+			DbCommand command = session.Batcher.PrepareCommand(CommandType.Text, insertSQL.Text, insertSQL.ParameterTypes);
 			//Add the output parameter
-			IDbDataParameter idParameter = factory.ConnectionProvider.Driver.GenerateParameter(command, ReturnParameterName,
+			DbParameter idParameter = factory.ConnectionProvider.Driver.GenerateParameter(command, ReturnParameterName,
 			                                                                                         paramType);
 			driveGeneratedParamName = idParameter.ParameterName;
 
@@ -58,10 +58,10 @@ namespace NHibernate.Id.Insert
 			return command;
 		}
 
-		public override object ExecuteAndExtract(IDbCommand insert, ISessionImplementor session)
+		public override object ExecuteAndExtract(DbCommand insert, ISessionImplementor session)
 		{
 			session.Batcher.ExecuteNonQuery(insert);
-			return ((IDbDataParameter)insert.Parameters[driveGeneratedParamName]).Value;
+			return ((DbParameter)insert.Parameters[driveGeneratedParamName]).Value;
 		}
 
 		#endregion

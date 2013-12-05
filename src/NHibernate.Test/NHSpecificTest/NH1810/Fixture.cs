@@ -1,4 +1,4 @@
-using System.Data;
+using System.Data;using System.Data.Common;
 using log4net;
 using NUnit.Framework;
 

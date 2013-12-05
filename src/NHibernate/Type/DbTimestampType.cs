@@ -1,5 +1,5 @@
 using System;
-using System.Data;
+using System.Data;using System.Data.Common;
 using System.Data.Common;
 
 using NHibernate.Engine;
@@ -57,8 +57,8 @@ namespace NHibernate.Type
 		protected virtual object UsePreparedStatement(string timestampSelectString, ISessionImplementor session)
 		{
 			var tsSelect = new SqlString(timestampSelectString);
-			IDbCommand ps = null;
-			IDataReader rs = null;
+			DbCommand ps = null;
+			DbDataReader rs = null;
 			using (new SessionIdLoggingContext(session.SessionId)) 
 			try
 			{

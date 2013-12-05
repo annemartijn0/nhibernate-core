@@ -1,7 +1,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Data;
+using System.Data;using System.Data.Common;
 using System.Data.Common;
 using System.Text;
 using NHibernate.AdoNet;
@@ -162,7 +162,7 @@ namespace NHibernate.Persister.Collection
 				if (RowDeleteEnabled)
 				{
 					bool useBatch = true;
-					IDbCommand st = null;
+					DbCommand st = null;
 					// update removed rows fks to null
 					try
 					{
@@ -231,7 +231,7 @@ namespace NHibernate.Persister.Collection
 					//bool callable = InsertCallable;
 					bool useBatch = expectation.CanBeBatched;
 					SqlCommandInfo sql = SqlInsertRowString;
-					IDbCommand st = null;
+					DbCommand st = null;
 
 					// now update all changed or added rows fks
 					try

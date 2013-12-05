@@ -1,4 +1,4 @@
-using System.Data;
+using System.Data;using System.Data.Common;
 using NHibernate.SqlTypes;
 using NUnit.Framework;
 

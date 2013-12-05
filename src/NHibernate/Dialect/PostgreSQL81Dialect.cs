@@ -1,5 +1,5 @@
 using System;
-using System.Data;
+using System.Data;using System.Data.Common;
 using NHibernate.SqlCommand;
 
 namespace NHibernate.Dialect

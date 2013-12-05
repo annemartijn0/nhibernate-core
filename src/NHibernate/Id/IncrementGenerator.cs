@@ -1,6 +1,6 @@
 using System;
 using System.Collections.Generic;
-using System.Data;
+using System.Data;using System.Data.Common;
 using System.Runtime.CompilerServices;
 using System.Text;
 
@@ -97,13 +97,13 @@ namespace NHibernate.Id
 
 			try
 			{
-				IDbConnection conn = session.Factory.ConnectionProvider.GetConnection();
-				IDbCommand qps = conn.CreateCommand();
+				DbConnection conn = session.Factory.ConnectionProvider.GetConnection();
+				DbCommand qps = conn.CreateCommand();
 				qps.CommandText = sql;
 				qps.CommandType = CommandType.Text;
 				try
 				{
-					IDataReader rs = qps.ExecuteReader();
+					DbDataReader rs = qps.ExecuteReader();
 					try
 					{
 						if (rs.Read())

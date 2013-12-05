@@ -1,5 +1,5 @@
 using System;
-using System.Data;
+using System.Data;using System.Data.Common;
 using Antlr.Runtime.Tree;
 using NHibernate.Action;
 using NHibernate.Engine;
@@ -183,7 +183,7 @@ namespace NHibernate.Hql.Ast.ANTLR.Exec
 			else
 			{
 				// at the very least cleanup the data :)
-				IDbCommand ps = null;
+				DbCommand ps = null;
 				try
 				{
 					var commandText = new SqlString("delete from " + persister.TemporaryIdTableName);
@@ -224,9 +224,9 @@ namespace NHibernate.Hql.Ast.ANTLR.Exec
 				this.session = session;
 			}
 
-			public void DoWork(IDbConnection connection, IDbTransaction transaction)
+			public void DoWork(DbConnection connection, DbTransaction transaction)
 			{
-				IDbCommand stmnt = null;
+				DbCommand stmnt = null;
 				try
 				{
 					stmnt = session.ConnectionManager.CreateCommand();
@@ -268,9 +268,9 @@ namespace NHibernate.Hql.Ast.ANTLR.Exec
 			private readonly IInternalLogger log;
 			private readonly ISessionImplementor session;
 
-			public void DoWork(IDbConnection connection, IDbTransaction transaction)
+			public void DoWork(DbConnection connection, DbTransaction transaction)
 			{
-				IDbCommand stmnt = null;
+				DbCommand stmnt = null;
 				try
 				{
 					stmnt = session.ConnectionManager.CreateCommand();

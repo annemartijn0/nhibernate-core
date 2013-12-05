@@ -1,4 +1,4 @@
-using System.Data;
+using System.Data;using System.Data.Common;
 using NHibernate.Cfg;
 using NHibernate.Dialect.Function;
 using NHibernate.SqlCommand;

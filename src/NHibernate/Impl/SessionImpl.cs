@@ -1,7 +1,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Data;
+using System.Data;using System.Data.Common;
 using System.Linq.Expressions;
 using System.Runtime.Serialization;
 using System.Security;
@@ -205,7 +205,7 @@ namespace NHibernate.Impl
 		/// <param name="autoCloseSessionEnabled">Should we auto close after completion of transaction</param>
 		/// <param name="connectionReleaseMode">The mode by which we should release JDBC connections.</param>
 		internal SessionImpl(
-			IDbConnection connection,
+			DbConnection connection,
 			SessionFactoryImpl factory,
 			bool autoclose,
 			long timestamp,
@@ -345,7 +345,7 @@ namespace NHibernate.Impl
 		/// Close() is not aware of distributed transactions
 		/// </remarks>
 		/// </summary>
-		public IDbConnection Close()
+		public DbConnection Close()
 		{
 			using (new SessionIdLoggingContext(SessionId))
 			{
@@ -1578,7 +1578,7 @@ namespace NHibernate.Impl
 			}
 		}
 
-		public override IDbConnection Connection
+		public override DbConnection Connection
 		{
 			get { return connectionManager.GetConnection(); }
 		}
@@ -1590,7 +1590,7 @@ namespace NHibernate.Impl
 		/// <see langword="true" /> if the ISession is connected.
 		/// </value>
 		/// <remarks>
-		/// An ISession is considered connected if there is an <see cref="IDbConnection"/> (regardless
+		/// An ISession is considered connected if there is an <see cref="DbConnection"/> (regardless
 		/// of its state) or if it the field <c>connect</c> is true.  Meaning that it will connect
 		/// at the next operation that requires a connection.
 		/// </remarks>
@@ -1600,7 +1600,7 @@ namespace NHibernate.Impl
 		}
 
 		/// <summary></summary>
-		public IDbConnection Disconnect()
+		public DbConnection Disconnect()
 		{
 			using (new SessionIdLoggingContext(SessionId))
 			{
@@ -1620,7 +1620,7 @@ namespace NHibernate.Impl
 			}
 		}
 
-		public void Reconnect(IDbConnection conn)
+		public void Reconnect(DbConnection conn)
 		{
 			using (new SessionIdLoggingContext(SessionId))
 			{
