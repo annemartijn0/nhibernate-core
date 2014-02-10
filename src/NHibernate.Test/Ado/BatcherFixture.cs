@@ -1,10 +1,13 @@
+using System;
 using System.Collections;
 using System.Data;
 using Moq;
 using NHibernate.AdoNet;
+using NHibernate.AdoNet.Util;
 using NHibernate.Cfg;
 using NHibernate.Driver;
 using NUnit.Framework;
+using Environment = NHibernate.Cfg.Environment;
 
 namespace NHibernate.Test.Ado
 {
@@ -53,6 +56,75 @@ namespace NHibernate.Test.Ado
             // Assert
             Assert.IsNotNull(result);
             Assert.IsInstanceOf(typeof(NHybridDataReader), result);
+        }
+
+        [Test, Description("The ExecuteReader method should get connection property of command")]
+        public void ExecuteReader_ShouldCall_Command_Connection()
+        {
+            if (sessions.Settings.BatcherFactory is SqlClientBatchingBatcherFactory == false)
+                Assert.Ignore("This test is for SqlClientBatchingBatcher only");
+
+            // Arrange
+            var dbCommandMock = new Mock<IDbCommand>();
+
+            using (ISession s = sessions.OpenSession())
+            {
+                var target = new SqlClientBatchingBatcher(s.GetSessionImplementation().ConnectionManager, null);
+
+                // Act
+                target.ExecuteReader(dbCommandMock.Object);
+            }
+
+            // Assert
+            dbCommandMock.Verify(x => x.Connection, Times.Once);
+        }
+
+        [Test, Description("The ExecuteReader method should call ExecuteReader on command")]
+        public void ExecuteReader_ShouldCall_Command_ExecuteReader()
+        {
+            if (sessions.Settings.BatcherFactory is SqlClientBatchingBatcherFactory == false)
+                Assert.Ignore("This test is for SqlClientBatchingBatcher only");
+
+            // Arrange
+            var dbCommandMock = new Mock<IDbCommand>();
+
+            using (ISession s = sessions.OpenSession())
+            {
+                var target = new SqlClientBatchingBatcher(s.GetSessionImplementation().ConnectionManager, null);
+
+                // Act
+                target.ExecuteReader(dbCommandMock.Object);
+            }
+
+            // Assert
+            dbCommandMock.Verify(x => x.ExecuteReader(), Times.Once);
+        }
+
+        [Test, Description("The ExecuteReader method should catch Exceptions and add extra details to it")]
+        public void ExecuteReader_ShouldCatchExceptionAndAddDetails()
+        {
+            if (sessions.Settings.BatcherFactory is SqlClientBatchingBatcherFactory == false)
+                Assert.Ignore("This test is for SqlClientBatchingBatcher only");
+
+            // Arrange
+            var dbCommandMock = new Mock<IDbCommand>();
+            dbCommandMock.Setup(x => x.ExecuteReader()).Throws(new Exception());
+
+            using (ISession s = sessions.OpenSession())
+            {
+                var target = new SqlClientBatchingBatcher(s.GetSessionImplementation().ConnectionManager, null);
+
+                try
+                {
+                    // Act
+                    target.ExecuteReader(dbCommandMock.Object);
+                }
+                catch (Exception e)
+                {
+                    // Assert
+                    Assert.IsTrue(e.Data.Contains("actual-sql-query"));
+                }
+            }
         }
 
 		[Test]
