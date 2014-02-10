@@ -1,6 +1,9 @@
 using System.Collections;
+using System.Data;
+using Moq;
 using NHibernate.AdoNet;
 using NHibernate.Cfg;
+using NHibernate.Driver;
 using NUnit.Framework;
 
 namespace NHibernate.Test.Ado
@@ -29,6 +32,28 @@ namespace NHibernate.Test.Ado
 		{
 			return !(factory.Settings.BatcherFactory is NonBatchingBatcherFactory);
 		}
+
+        [Test, Description("The ExecuteReader method should return NHybridDataReader and should not return null")]
+        public void ExecuteReader_ShouldReturn_NHybridDataReader()
+        {
+            if (sessions.Settings.BatcherFactory is SqlClientBatchingBatcherFactory == false)
+                Assert.Ignore("This test is for SqlClientBatchingBatcher only");
+
+            // Arrange
+            IDataReader result;
+
+            using (ISession s = sessions.OpenSession())
+            {
+                var target = new SqlClientBatchingBatcher(s.GetSessionImplementation().ConnectionManager, null);
+
+                // Act
+                result = target.ExecuteReader(new Mock<IDbCommand>().Object);
+            }
+
+            // Assert
+            Assert.IsNotNull(result);
+            Assert.IsInstanceOf(typeof(NHybridDataReader), result);
+        }
 
 		[Test]
 		[Description("The batcher should run all INSERT queries in only one roundtrip.")]
