@@ -427,6 +427,35 @@ namespace NHibernate.Loader
             }
         }
 
+        private Task<IList> DoQueryAsync(ISessionImplementor session, QueryParameters queryParameters, bool returnProxies)
+        {
+            return Task.Factory.StartNew(() =>
+            {
+                using (new SessionIdLoggingContext(session.SessionId))
+                {
+                    RowSelection selection = queryParameters.RowSelection;
+                    int maxRows = HasMaxRows(selection) ? selection.MaxRows : int.MaxValue;
+
+                    int entitySpan = EntityPersisters.Length;
+
+                    List<object> hydratedObjects = entitySpan == 0 ? null : new List<object>(entitySpan*10);
+
+                    IDbCommand st = PrepareQueryCommand(queryParameters, false, session);
+
+                    IDataReader rs = GetResultSetAsync(st, queryParameters.HasAutoDiscoverScalarTypes,
+                        queryParameters.Callable, selection,
+                        session).Result;
+
+                    // would be great to move all this below here into another method that could also be used
+                    // from the new scrolling stuff.
+                    //
+                    // Would need to change the way the max-row stuff is handled (i.e. behind an interface) so
+                    // that I could do the control breaking at the means to know when to stop
+                    return Results(session, queryParameters, returnProxies, rs, entitySpan, maxRows, hydratedObjects, st);
+                }
+            });
+        }
+
         private IList Results(ISessionImplementor session, QueryParameters queryParameters, bool returnProxies, IDataReader rs,
             int entitySpan, int maxRows, List<object> hydratedObjects, IDbCommand st)
         {
@@ -1244,7 +1273,7 @@ namespace NHibernate.Loader
         /// <returns>An IDataReader advanced to the first record in RowSelection.</returns>
         protected Task<IDataReader> GetResultSetAsync(IDbCommand dbCommand, bool autoDiscoverTypes, bool callable, RowSelection selection, ISessionImplementor session)
         {
-            return Task<IDataReader>.Factory.StartNew(() =>
+            return Task.Factory.StartNew(() =>
             {
                 Log.Info(dbCommand.CommandText);
 
