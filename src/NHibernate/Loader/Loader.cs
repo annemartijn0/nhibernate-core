@@ -229,15 +229,8 @@ namespace NHibernate.Loader
         /// </summary>
         private IList DoQueryAndInitializeNonLazyCollections(ISessionImplementor session, QueryParameters queryParameters, bool returnProxies)
         {
-            IPersistenceContext persistenceContext = session.PersistenceContext;
+            var persistenceContext = PersistenceContextDoQueryAndInitializeNonLazyCollections(session, queryParameters);
             bool defaultReadOnlyOrig = persistenceContext.DefaultReadOnly;
-
-            if (queryParameters.IsReadOnlyInitialized)
-                persistenceContext.DefaultReadOnly = queryParameters.ReadOnly;
-            else
-                queryParameters.ReadOnly = persistenceContext.DefaultReadOnly;
-
-            persistenceContext.BeforeLoad();
             IList result;
             try
             {
@@ -257,6 +250,20 @@ namespace NHibernate.Loader
             }
 
             return result;
+        }
+
+        private static IPersistenceContext PersistenceContextDoQueryAndInitializeNonLazyCollections(ISessionImplementor session,
+            QueryParameters queryParameters)
+        {
+            IPersistenceContext persistenceContext = session.PersistenceContext;
+
+            if (queryParameters.IsReadOnlyInitialized)
+                persistenceContext.DefaultReadOnly = queryParameters.ReadOnly;
+            else
+                queryParameters.ReadOnly = persistenceContext.DefaultReadOnly;
+
+            persistenceContext.BeforeLoad();
+            return persistenceContext;
         }
 
         /// <summary>
