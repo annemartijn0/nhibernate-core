@@ -252,6 +252,40 @@ namespace NHibernate.Loader
             return result;
         }
 
+        /// <summary>
+        /// Execute an SQL query asynchronously and attempt to instantiate instances of the class mapped by the given
+        /// persister from each row of the <c>DataReader</c>. If an object is supplied, will attempt to
+        /// initialize that object. If a collection is supplied, attempt to initialize that collection.
+        /// </summary>
+        private Task<IList> DoQueryAndInitializeNonLazyCollectionsAsync(ISessionImplementor session, QueryParameters queryParameters, bool returnProxies)
+        {
+            return Task.Factory.StartNew(() =>
+            {
+                var persistenceContext = PersistenceContextDoQueryAndInitializeNonLazyCollections(session,
+                    queryParameters);
+                bool defaultReadOnlyOrig = persistenceContext.DefaultReadOnly;
+                IList result;
+                try
+                {
+                    try
+                    {
+                        result = DoQueryAsync(session, queryParameters, returnProxies).Result;
+                    }
+                    finally
+                    {
+                        persistenceContext.AfterLoad();
+                    }
+                    persistenceContext.InitializeNonLazyCollections();
+                }
+                finally
+                {
+                    persistenceContext.DefaultReadOnly = defaultReadOnlyOrig;
+                }
+
+                return result;
+            });
+        }
+
         private static IPersistenceContext PersistenceContextDoQueryAndInitializeNonLazyCollections(ISessionImplementor session,
             QueryParameters queryParameters)
         {
