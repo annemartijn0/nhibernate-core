@@ -12,6 +12,7 @@ using NHibernate.Driver;
 using NHibernate.Test.NHSpecificTest.NH2189;
 using NUnit.Framework;
 using Environment = NHibernate.Cfg.Environment;
+using Task = System.Threading.Tasks.Task;
 
 namespace NHibernate.Test.Ado
 {
@@ -274,16 +275,50 @@ namespace NHibernate.Test.Ado
             }
         }
 
+        [Test, Description("The ExecuteReaderAsync method should add the returned reader to readers to close")]
+        public void ExecuteReaderAsync_MultipleTimes()
+        {
+            if (sessions.Settings.BatcherFactory is SqlClientBatchingBatcherFactory == false)
+                Assert.Ignore("This test is for SqlClientBatchingBatcher only");
+
+            // Arrange
+            const string queryString = "SELECT * FROM dbo.VerySimple;";
+            const int numberOfTasks = 4;
+            var tasks = new Task[numberOfTasks];
+
+            using (ISession s = sessions.OpenSession())
+            {
+                var target =
+                    new SqlClientBatchingBatcher(s.GetSessionImplementation().ConnectionManager, null) as
+                        AbstractBatcher;
+                var readersToClose = GetReadersToClose(target);
+
+                // Act
+                for (int i = 0; i < numberOfTasks; i++)
+                {
+                    tasks[i] = target.ExecuteReaderAsync(new System.Data.SqlClient.SqlCommand
+                        (queryString, s.Connection as System.Data.SqlClient.SqlConnection));
+                }
+
+                Task.WaitAll(tasks);
+
+                // Assert
+                Assert.AreEqual(numberOfTasks, readersToClose.Count);
+            }
+        }
+
         private static HashSet<IDataReader> GetReadersToClose(AbstractBatcher target)
         {
             const string fieldname = "_readersToClose";
-            var field = typeof (AbstractBatcher)
+            var abstractBatcherType = typeof(AbstractBatcher);
+
+            var field = abstractBatcherType
                 .GetField(fieldname, BindingFlags.Instance | BindingFlags.NonPublic);
 
-            if(field == null)
+            if (field == null)
                 Assert.Fail("{0}.{1} does not exist anymore, " +
                             "if you renamed this, you should adjust this test accordingly"
-                            , typeof(AbstractBatcher).ToString(), fieldname);
+                            , abstractBatcherType.ToString(), fieldname);
 
             return field.GetValue(target) as HashSet<IDataReader>;
         }
