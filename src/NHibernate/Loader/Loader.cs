@@ -1600,9 +1600,38 @@ namespace NHibernate.Loader
             return ListIgnoreQueryCache(session, queryParameters);
         }
 
+        /// <summary>
+        /// Return the query results asynchronously, using the query cache, called
+        /// by subclasses that implement cacheable queries
+        /// </summary>
+        /// <param name="session"></param>
+        /// <param name="queryParameters"></param>
+        /// <param name="querySpaces"></param>
+        /// <param name="resultTypes"></param>
+        /// <returns></returns>
+        protected Task<IList> ListAsync(ISessionImplementor session, QueryParameters queryParameters, ISet<string> querySpaces, IType[] resultTypes)
+        {
+            Task.Factory.StartNew(() =>
+            {
+                bool cacheable = _factory.Settings.IsQueryCacheEnabled && queryParameters.Cacheable;
+
+                if (cacheable)
+                {
+                    return ListUsingQueryCacheAsync(session, queryParameters, querySpaces, resultTypes)
+                        .Result;
+                }
+                return ListIgnoreQueryCacheAsync(session, queryParameters).Result;
+            });
+        }
+
         private IList ListIgnoreQueryCache(ISessionImplementor session, QueryParameters queryParameters)
         {
             return GetResultList(DoList(session, queryParameters), queryParameters.ResultTransformer);
+        }
+
+        private Task<IList> ListIgnoreQueryCacheAsync(ISessionImplementor session, QueryParameters queryParameters)
+        {
+            return Task.Factory.StartNew(() => GetResultList(DoListAsync(session, queryParameters).Result, queryParameters.ResultTransformer));
         }
 
         private IList ListUsingQueryCache(ISessionImplementor session, QueryParameters queryParameters, ISet<string> querySpaces, IType[] resultTypes)
@@ -1621,6 +1650,28 @@ namespace NHibernate.Loader
             }
 
             return GetResultList(result, queryParameters.ResultTransformer);
+        }
+
+        private Task<IList> ListUsingQueryCacheAsync(ISessionImplementor session, QueryParameters queryParameters, ISet<string> querySpaces, IType[] resultTypes)
+        {
+            Task.Factory.StartNew(() =>
+            {
+                IQueryCache queryCache = _factory.GetQueryCache(queryParameters.CacheRegion);
+
+                ISet<FilterKey> filterKeys = FilterKey.CreateFilterKeys(session.EnabledFilters, session.EntityMode);
+                QueryKey key = new QueryKey(Factory, SqlString, queryParameters, filterKeys);
+
+                IList result = GetResultFromQueryCache(session, queryParameters, querySpaces, resultTypes, queryCache,
+                    key);
+
+                if (result == null)
+                {
+                    result = DoListAsync(session, queryParameters).Result;
+                    PutResultInQueryCache(session, queryParameters, resultTypes, queryCache, key, result);
+                }
+
+                return GetResultList(result, queryParameters.ResultTransformer);
+            });
         }
 
         private IList GetResultFromQueryCache(ISessionImplementor session, QueryParameters queryParameters,
@@ -1712,6 +1763,56 @@ namespace NHibernate.Loader
                 Factory.StatisticsImplementor.QueryExecuted(QueryIdentifier, result.Count, stopWatch.Elapsed);
             }
             return result;
+        }
+
+        /// <summary>
+        /// Actually execute a query, ignoring the query cache
+        /// </summary>
+        /// <param name="session"></param>
+        /// <param name="queryParameters"></param>
+        /// <returns></returns>
+        protected Task<IList> DoListAsync(ISessionImplementor session, QueryParameters queryParameters)
+        {
+            return Task.Factory.StartNew(() =>
+            {
+                bool statsEnabled = Factory.Statistics.IsStatisticsEnabled;
+                var stopWatch = new Stopwatch();
+                if (statsEnabled)
+                {
+                    stopWatch.Start();
+                }
+
+                IList result = null;
+                try
+                {
+                    result = DoQueryAndInitializeNonLazyCollectionsAsync(session, queryParameters, true).Result;
+                }
+                catch (AggregateException aggregateException)
+                {
+                    HandleDoQueryAndInitializeNonLazyCollectionsAsyncExceptions(aggregateException, queryParameters);
+                }
+                if (statsEnabled)
+                {
+                    stopWatch.Stop();
+                    Factory.StatisticsImplementor.QueryExecuted(QueryIdentifier, result.Count, stopWatch.Elapsed);
+                }
+
+                return result;
+            });
+        }
+
+        private void HandleDoQueryAndInitializeNonLazyCollectionsAsyncExceptions(AggregateException aggregateException, QueryParameters queryParameters)
+        {
+            aggregateException.Handle((x) =>
+            {
+                if (x is HibernateException) // This we know how to handle.
+                {
+                    throw x;
+                }
+                throw ADOExceptionHelper.Convert(Factory.SQLExceptionConverter, x, "could not execute query",
+                        SqlString,
+                        queryParameters.PositionalParameterValues, queryParameters.NamedParameters);
+            });
         }
 
         /// <summary>
