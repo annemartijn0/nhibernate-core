@@ -5,6 +5,7 @@ using System.Data;
 using System.Linq.Expressions;
 using System.Runtime.Serialization;
 using System.Security;
+using System.Threading.Tasks;
 using NHibernate.AdoNet;
 using NHibernate.Collection;
 using NHibernate.Criterion;
@@ -1917,6 +1918,64 @@ namespace NHibernate.Impl
 				}
 			}
 		}
+
+        public Task ListAsync(CriteriaImpl criteria, IList results)
+        {
+            return Task.Factory.StartNew(() =>
+            {
+                using (new SessionIdLoggingContext(SessionId))
+                {
+                    CheckAndUpdateSessionStatus();
+
+                    string[] implementors = Factory.GetImplementors(criteria.EntityOrClassName);
+                    int size = implementors.Length;
+
+                    CriteriaLoader[] loaders = new CriteriaLoader[size];
+                    ISet<string> spaces = new HashSet<string>();
+
+                    for (int i = 0; i < size; i++)
+                    {
+                        loaders[i] = new CriteriaLoader(
+                            GetOuterJoinLoadable(implementors[i]),
+                            Factory,
+                            criteria,
+                            implementors[i],
+                            enabledFilters
+                            );
+
+                        spaces.UnionWith(loaders[i].QuerySpaces);
+                    }
+
+                    AutoFlushIfRequired(spaces);
+
+                    dontFlushFromFind++;
+
+                    bool success = false;
+                    try
+                    {
+                        for (int i = size - 1; i >= 0; i--)
+                        {
+                            ArrayHelper.AddAll(results, loaders[i].ListAsync(this).Result);
+                        }
+                        success = true;
+                    }
+                    catch (HibernateException)
+                    {
+                        // Do not call Convert on HibernateExceptions
+                        throw;
+                    }
+                    catch (Exception sqle)
+                    {
+                        throw Convert(sqle, "Unable to perform find");
+                    }
+                    finally
+                    {
+                        dontFlushFromFind--;
+                        AfterOperation(success);
+                    }
+                }
+            });
+        }
 
 		public bool Contains(object obj)
 		{
