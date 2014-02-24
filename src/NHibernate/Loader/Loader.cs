@@ -1611,7 +1611,7 @@ namespace NHibernate.Loader
         /// <returns></returns>
         protected Task<IList> ListAsync(ISessionImplementor session, QueryParameters queryParameters, ISet<string> querySpaces, IType[] resultTypes)
         {
-            Task.Factory.StartNew(() =>
+            return Task.Factory.StartNew(() =>
             {
                 bool cacheable = _factory.Settings.IsQueryCacheEnabled && queryParameters.Cacheable;
 
