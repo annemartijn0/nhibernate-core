@@ -75,6 +75,11 @@ namespace NHibernate.Loader.Criteria
 			return List(session, translator.GetQueryParameters(), querySpaces, resultTypes);
 		}
 
+        public IList ListAsync(ISessionImplementor session)
+        {
+            return ListAsync(session, translator.GetQueryParameters(), querySpaces, resultTypes).Result;
+        }
+
 		protected override object GetResultColumnOrRow(object[] row, IResultTransformer customResultTransformer, IDataReader rs,
 													   ISessionImplementor session)
 		{
