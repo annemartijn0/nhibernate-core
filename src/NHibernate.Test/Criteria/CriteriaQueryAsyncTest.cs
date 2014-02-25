@@ -275,7 +275,7 @@ namespace NHibernate.Test.Criteria
 							Restrictions.Eq("pc.CourseCode", "HIB-R"))
 						.SetProjection(Property.ForName("pc.CourseCode"))
 						.AddOrder(Order.Asc("pc.CourseCode"))
-						.List<string>();
+						.ListAsync<string>().Result;
 
 					Assert.AreEqual(3, result.Count);
 					Assert.IsNull(result[2]);
@@ -288,7 +288,7 @@ namespace NHibernate.Test.Criteria
 							Restrictions.Not(Restrictions.Eq("pc.CourseCode", "HIB-A")))
 						.SetProjection(Property.ForName("pc.CourseCode"))
 						.AddOrder(Order.Asc("pc.CourseCode"))
-						.List<string>();
+						.ListAsync<string>().Result;
 
 					Assert.AreEqual(3, result.Count);
 
@@ -313,7 +313,7 @@ namespace NHibernate.Test.Criteria
 						.SetProjection(Property.ForName("pc.CourseCode"))
 						.AddOrder(Order.Asc("pc.CourseCode"));
 					var clonedCriteria = CriteriaTransformer.Clone(criteria);
-					result = clonedCriteria.List<string>();
+					result = clonedCriteria.ListAsync<string>().Result;
 
 					Assert.AreEqual(3, result.Count);
 
