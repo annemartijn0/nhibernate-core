@@ -1919,7 +1919,7 @@ namespace NHibernate.Impl
 			}
 		}
 
-        public Task ListAsync(CriteriaImpl criteria, IList results)
+        public override Task ListAsync(CriteriaImpl criteria, IList results)
         {
             return Task.Factory.StartNew(() =>
             {

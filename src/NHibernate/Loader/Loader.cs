@@ -1654,7 +1654,7 @@ namespace NHibernate.Loader
 
         private Task<IList> ListUsingQueryCacheAsync(ISessionImplementor session, QueryParameters queryParameters, ISet<string> querySpaces, IType[] resultTypes)
         {
-            Task.Factory.StartNew(() =>
+            return Task.Factory.StartNew(() =>
             {
                 IQueryCache queryCache = _factory.GetQueryCache(queryParameters.CacheRegion);
 

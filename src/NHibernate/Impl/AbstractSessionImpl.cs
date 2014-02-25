@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Data;
+using System.Threading.Tasks;
 using NHibernate.AdoNet;
 using NHibernate.Cache;
 using NHibernate.Collection;
@@ -148,6 +149,8 @@ namespace NHibernate.Impl
 		}
 
 		public abstract void List(CriteriaImpl criteria, IList results);
+
+        public abstract Task ListAsync(CriteriaImpl criteria, IList results);
 		
 		public virtual IList List(CriteriaImpl criteria)
 		{
@@ -482,5 +485,5 @@ namespace NHibernate.Impl
 		}
 
 		public abstract int ExecuteUpdate(IQueryExpression queryExpression, QueryParameters queryParameters);
-	}
+    }
 }

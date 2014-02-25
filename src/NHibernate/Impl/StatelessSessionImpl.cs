@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Data;
 using System.Linq.Expressions;
+using System.Threading.Tasks;
 using NHibernate.AdoNet;
 using NHibernate.Cache;
 using NHibernate.Collection;
@@ -179,8 +180,13 @@ namespace NHibernate.Impl
 				temporaryPersistenceContext.Clear();
 			}
 		}
-		
-		public override IEnumerable Enumerable(IQueryExpression queryExpression, QueryParameters queryParameters)
+
+	    public override Task ListAsync(CriteriaImpl criteria, IList results)
+	    {
+	        throw new NotImplementedException();
+	    }
+
+	    public override IEnumerable Enumerable(IQueryExpression queryExpression, QueryParameters queryParameters)
 		{
 			throw new NotImplementedException();
 		}

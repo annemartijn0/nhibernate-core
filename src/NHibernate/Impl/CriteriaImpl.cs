@@ -827,10 +827,20 @@ namespace NHibernate.Impl
 				root.List(results);
 			}
 
-			public IList<T> List<T>()
+		    public Task ListAsync(IList results)
+		    {
+                return root.ListAsync(results);
+		    }
+
+		    public IList<T> List<T>()
 			{
 				return root.List<T>();
 			}
+
+            public Task<IList<T>> ListAsync<T>()
+            {
+                return root.ListAsync<T>();
+            }
 
 			public T UniqueResult<T>()
 			{
