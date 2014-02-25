@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Text;
+using System.Threading.Tasks;
 using NHibernate.Criterion;
 using NHibernate.Engine;
 using NHibernate.SqlCommand;
@@ -269,6 +270,22 @@ namespace NHibernate.Impl
 				After();
 			}
 		}
+
+        public Task ListAsync(IList results)
+        {
+            return Task.Factory.StartNew(() =>
+            {
+                Before();
+                try
+                {
+                    session.ListAsync(this, results).Wait();
+                }
+                finally
+                {
+                    After();
+                }
+            });
+        }
 
 		public IList<T> List<T>()
 		{

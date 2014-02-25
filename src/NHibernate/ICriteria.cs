@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 using NHibernate.Criterion;
 using NHibernate.SqlCommand;
 using NHibernate.Transform;
@@ -352,6 +353,12 @@ namespace NHibernate
 		/// </summary>
 		/// <param name="results">The list to fill with the results.</param>
 		void List(IList results);
+
+        /// <summary>
+        /// Asynchronously get the results and fill the <see cref="IList"/>
+        /// </summary>
+        /// <param name="results">The list to fill with the results.</param>
+        Task ListAsync(IList results);
 
 		/// <summary>
 		/// Strongly-typed version of <see cref="List()" />.
