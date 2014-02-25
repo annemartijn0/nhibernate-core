@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Data;
+using System.Threading.Tasks;
 using NHibernate.AdoNet;
 using NHibernate.Cache;
 using NHibernate.Collection;
@@ -120,6 +121,8 @@ namespace NHibernate.Engine
 		IList<T> List<T>(CriteriaImpl criteria);
 
 		void List(CriteriaImpl criteria, IList results);
+
+        Task ListAsync(CriteriaImpl criteria, IList results);
 
 		IList List(CriteriaImpl criteria);
 
