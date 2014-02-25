@@ -354,21 +354,21 @@ namespace NHibernate
 		/// <param name="results">The list to fill with the results.</param>
 		void List(IList results);
 
-        /// <summary>
-        /// Asynchronously get the results and fill the <see cref="IList"/>
-        /// </summary>
-        /// <param name="results">The list to fill with the results.</param>
-        Task ListAsync(IList results);
+		/// <summary>
+		/// Asynchronously get the results and fill the <see cref="IList"/>
+		/// </summary>
+		/// <param name="results">The list to fill with the results.</param>
+		Task ListAsync(IList results);
 
 		/// <summary>
 		/// Strongly-typed version of <see cref="List()" />.
 		/// </summary>
 		IList<T> List<T>();
 
-        /// <summary>
-        /// Asynchronous version of <see cref="List{T}()" />.
-        /// </summary>
-        Task<IList<T>> ListAsync<T>();
+		/// <summary>
+		/// Asynchronous version of <see cref="List{T}()" />.
+		/// </summary>
+		Task<IList<T>> ListAsync<T>();
 
 		/// <summary>
 		/// Strongly-typed version of <see cref="UniqueResult()" />.
