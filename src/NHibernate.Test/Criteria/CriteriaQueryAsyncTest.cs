@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 using NHibernate.Dialect;
 using NHibernate.Criterion;
 using NHibernate.SqlCommand;
@@ -29,6 +30,78 @@ namespace NHibernate.Test.Criteria
 						"Criteria.Animal.hbm.xml",
 						"Criteria.MaterialResource.hbm.xml"
 					};
+			}
+		}
+
+		[Test]
+		public void ListAsync_fetchesAllStudents()
+		{
+			using (ISession session = OpenSession())
+			using (ITransaction t = session.BeginTransaction())
+			{
+				session.Save(new Student { Name = "Mengano", StudentNumber = 232 });
+				session.Save(new Student { Name = "Ayende", StudentNumber = 999 });
+				session.Save(new Student { Name = "Fabio", StudentNumber = 123 });
+				session.Save(new Student { Name = "Merlo", StudentNumber = 456 });
+				session.Save(new Student { Name = "Fulano", StudentNumber = 0 });
+
+				t.Commit();
+			}
+
+			using (ISession session = OpenSession())
+			{
+				var result = session.CreateCriteria<Student>()
+					.ListAsync<Student>().Result;
+
+				Assert.AreEqual(result.Count, 5);
+			}
+
+			using (ISession session = OpenSession())
+			using (ITransaction t = session.BeginTransaction())
+			{
+				session.CreateQuery("delete from Student").ExecuteUpdate();
+				t.Commit();
+			}
+		}
+
+		[Test]
+		public void ListAsync_fetchesAllStudentsMultipleTimes()
+		{
+			// Arrange
+			int numberOfTasks = 4;
+			Task[] tasks = new Task[numberOfTasks];
+			using (ISession session = OpenSession())
+			using (ITransaction t = session.BeginTransaction())
+			{
+				session.Save(new Student { Name = "Mengano", StudentNumber = 232 });
+				session.Save(new Student { Name = "Ayende", StudentNumber = 999 });
+				session.Save(new Student { Name = "Fabio", StudentNumber = 123 });
+				session.Save(new Student { Name = "Merlo", StudentNumber = 456 });
+				session.Save(new Student { Name = "Fulano", StudentNumber = 0 });
+
+				t.Commit();
+			}
+
+			using (ISession session = OpenSession())
+			{
+				// Act
+				for (int i = 0; i < numberOfTasks; i++)
+				{
+					var task = session.CreateCriteria<Student>()
+					.ListAsync<Student>();
+					tasks[i] = task;
+				}
+
+				Task.WaitAll(tasks);
+
+				// Assert: No Exceptions
+			}
+
+			using (ISession session = OpenSession())
+			using (ITransaction t = session.BeginTransaction())
+			{
+				session.CreateQuery("delete from Student").ExecuteUpdate();
+				t.Commit();
 			}
 		}
 
