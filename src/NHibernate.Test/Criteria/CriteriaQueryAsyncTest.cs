@@ -71,8 +71,9 @@ namespace NHibernate.Test.Criteria
 		public void ListAsync_fetchesAllStudentsMultipleTimes()
 		{
 			// Arrange
-			int numberOfTasks = 4;
-			Task[] tasks = new Task[numberOfTasks];
+			const int numberOfTasks = 4;
+			var tasks = new Task[numberOfTasks];
+
 			using (ISession session = OpenSession())
 			using (ITransaction t = session.BeginTransaction())
 			{
