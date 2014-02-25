@@ -36,6 +36,7 @@ namespace NHibernate.Test.Criteria
 		[Test]
 		public void ListAsync_fetchesAllStudents()
 		{
+			// Assert
 			using (ISession session = OpenSession())
 			using (ITransaction t = session.BeginTransaction())
 			{
@@ -50,9 +51,11 @@ namespace NHibernate.Test.Criteria
 
 			using (ISession session = OpenSession())
 			{
+				// Act
 				var result = session.CreateCriteria<Student>()
 					.ListAsync<Student>().Result;
 
+				// Assert
 				Assert.AreEqual(result.Count, 5);
 			}
 
