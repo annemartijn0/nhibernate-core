@@ -365,6 +365,11 @@ namespace NHibernate
 		/// </summary>
 		IList<T> List<T>();
 
+        /// <summary>
+        /// Asynchronous version of <see cref="List{T}()" />.
+        /// </summary>
+        Task<IList<T>> ListAsync<T>();
+
 		/// <summary>
 		/// Strongly-typed version of <see cref="UniqueResult()" />.
 		/// </summary>

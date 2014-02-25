@@ -294,6 +294,16 @@ namespace NHibernate.Impl
 			return results;
 		}
 
+        public Task<IList<T>> ListAsync<T>()
+        {
+            return Task.Factory.StartNew<IList<T>>(() =>
+            {
+                List<T> results = new List<T>();
+                List(results);
+                return results;
+            });
+        }
+
 		public T UniqueResult<T>()
 		{
 			object result = UniqueResult();
