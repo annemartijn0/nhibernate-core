@@ -87,6 +87,7 @@ namespace NHibernate.Test.Criteria
 			}
 
 			using (ISession session = OpenSession())
+			using (ITransaction t = session.BeginTransaction())
 			{
 				// Act
 				for (int i = 0; i < numberOfTasks; i++)
@@ -97,6 +98,7 @@ namespace NHibernate.Test.Criteria
 				}
 
 				Task.WaitAll(tasks);
+				t.Commit();
 
 				// Assert: No Exceptions
 			}
