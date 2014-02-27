@@ -78,8 +78,7 @@ namespace NHibernate.Loader.Criteria
 
         public Task<IList> ListAsync(ISessionImplementor session)
         {
-            return Task.Factory.StartNew(() =>
-                ListAsync(session, translator.GetQueryParameters(), querySpaces, resultTypes).Result);
+            return ListAsync(session, translator.GetQueryParameters(), querySpaces, resultTypes);
         }
 
 		protected override object GetResultColumnOrRow(object[] row, IResultTransformer customResultTransformer, IDataReader rs,

@@ -1921,60 +1921,68 @@ namespace NHibernate.Impl
 
         public override Task ListAsync(CriteriaImpl criteria, IList results)
         {
-            return Task.Factory.StartNew(() =>
-            {
-                using (new SessionIdLoggingContext(SessionId))
-                {
-                    CheckAndUpdateSessionStatus();
+	        var taskCompletionSource = new TaskCompletionSource<IList>();
+		        using (new SessionIdLoggingContext(SessionId))
+		        {
+			        CheckAndUpdateSessionStatus();
 
-                    string[] implementors = Factory.GetImplementors(criteria.EntityOrClassName);
-                    int size = implementors.Length;
+			        string[] implementors = Factory.GetImplementors(criteria.EntityOrClassName);
+			        int size = implementors.Length;
 
-                    CriteriaLoader[] loaders = new CriteriaLoader[size];
-                    ISet<string> spaces = new HashSet<string>();
+			        CriteriaLoader[] loaders = new CriteriaLoader[size];
+			        ISet<string> spaces = new HashSet<string>();
 
-                    for (int i = 0; i < size; i++)
-                    {
-                        loaders[i] = new CriteriaLoader(
-                            GetOuterJoinLoadable(implementors[i]),
-                            Factory,
-                            criteria,
-                            implementors[i],
-                            enabledFilters
-                            );
+			        for (int i = 0; i < size; i++)
+			        {
+				        loaders[i] = new CriteriaLoader(
+					        GetOuterJoinLoadable(implementors[i]),
+					        Factory,
+					        criteria,
+					        implementors[i],
+					        enabledFilters
+					        );
 
-                        spaces.UnionWith(loaders[i].QuerySpaces);
-                    }
+				        spaces.UnionWith(loaders[i].QuerySpaces);
+			        }
 
-                    AutoFlushIfRequired(spaces);
+			        AutoFlushIfRequired(spaces);
 
-                    dontFlushFromFind++;
+			        dontFlushFromFind++;
 
-                    bool success = false;
-                    try
-                    {
-                        for (int i = size - 1; i >= 0; i--)
-                        {
-                            ArrayHelper.AddAll(results, loaders[i].ListAsync(this).Result);
-                        }
-                        success = true;
-                    }
-                    catch (HibernateException)
-                    {
-                        // Do not call Convert on HibernateExceptions
-                        throw;
-                    }
-                    catch (Exception sqle)
-                    {
-                        throw Convert(sqle, "Unable to perform find");
-                    }
-                    finally
-                    {
-                        dontFlushFromFind--;
-                        AfterOperation(success);
-                    }
-                }
-            });
+			        bool success = false;
+			        try
+			        {
+				        var tasks = new List<Task<IList>>();
+				        for (int i = size - 1; i >= 0; i--)
+				        {
+					        tasks.Add(loaders[i].ListAsync(this));
+				        }
+				        Task.WaitAll(tasks.ToArray());
+				        foreach (var task in tasks)
+				        {
+					        ArrayHelper.AddAll(results, task.Result);
+				        }
+
+						taskCompletionSource.SetResult(results);
+
+				        success = true;
+			        }
+			        catch (HibernateException)
+			        {
+				        // Do not call Convert on HibernateExceptions
+				        throw;
+			        }
+			        catch (Exception sqle)
+			        {
+				        throw Convert(sqle, "Unable to perform find");
+			        }
+			        finally
+			        {
+				        dontFlushFromFind--;
+				        AfterOperation(success);
+			        }
+		        }
+	        return taskCompletionSource.Task;
         }
 
 		public bool Contains(object obj)

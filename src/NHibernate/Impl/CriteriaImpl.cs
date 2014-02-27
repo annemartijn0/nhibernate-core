@@ -61,7 +61,7 @@ namespace NHibernate.Impl
 		}
 
 		public CriteriaImpl(string entityOrClassName, ISessionImplementor session)
-			: this(entityOrClassName, CriteriaSpecification.RootAlias, session) {}
+			: this(entityOrClassName, CriteriaSpecification.RootAlias, session) { }
 
 		public CriteriaImpl(string entityOrClassName, string alias, ISessionImplementor session)
 		{
@@ -124,13 +124,13 @@ namespace NHibernate.Impl
 		{
 			get { return projection; }
 		}
-		
+
 		/// <inheritdoc />
 		public bool IsReadOnlyInitialized
 		{
 			get { return (readOnly != null); }
 		}
-		
+
 		/// <inheritdoc />
 		public bool IsReadOnly
 		{
@@ -271,21 +271,18 @@ namespace NHibernate.Impl
 			}
 		}
 
-        public Task ListAsync(IList results)
-        {
-            return Task.Factory.StartNew(() =>
-            {
-                Before();
-                try
-                {
-                    session.ListAsync(this, results).Wait();
-                }
-                finally
-                {
-                    After();
-                }
-            });
-        }
+		public Task ListAsync(IList results)
+		{
+			Before();
+			try
+			{
+				return session.ListAsync(this, results);
+			}
+			finally
+			{
+				After();
+			}
+		}
 
 		public IList<T> List<T>()
 		{
@@ -294,26 +291,27 @@ namespace NHibernate.Impl
 			return results;
 		}
 
-        public Task<IList<T>> ListAsync<T>()
-        {
-            return Task.Factory.StartNew<IList<T>>(() =>
-            {
-                List<T> results = new List<T>();
-                List(results);
-                return results;
-            });
-        }
+		public Task<IList<T>> ListAsync<T>()
+		{
+			var taskCompletionSource = new TaskCompletionSource<IList<T>>();
+			var results = new List<T>();
+
+			ListAsync(results);
+			taskCompletionSource.SetResult(results);
+
+			return taskCompletionSource.Task;
+		}
 
 		public T UniqueResult<T>()
 		{
 			object result = UniqueResult();
-			if (result == null && typeof (T).IsValueType)
+			if (result == null && typeof(T).IsValueType)
 			{
 				return default(T);
 			}
 			else
 			{
-				return (T) result;
+				return (T)result;
 			}
 		}
 
@@ -498,12 +496,12 @@ namespace NHibernate.Impl
 
 		public ICriteria SetProjection(params IProjection[] projections)
 		{
-			if(projections==null)
+			if (projections == null)
 				throw new ArgumentNullException("projections");
-			if(projections.Length ==0)
+			if (projections.Length == 0)
 				throw new ArgumentException("projections must contain a least one projection");
 
-			if(projections.Length==1)
+			if (projections.Length == 1)
 			{
 				projection = projections[0];
 			}
@@ -593,7 +591,7 @@ namespace NHibernate.Impl
 				}
 				else
 				{
-					ICriteria clonedProjectionCriteria = (ICriteria) projectionCriteria.Clone();
+					ICriteria clonedProjectionCriteria = (ICriteria)projectionCriteria.Clone();
 					clone.projectionCriteria = clonedProjectionCriteria;
 				}
 			}
@@ -689,7 +687,7 @@ namespace NHibernate.Impl
 			}
 
 			internal Subcriteria(CriteriaImpl root, ICriteria parent, string path, string alias, JoinType joinType)
-				: this(root, parent, path, alias, joinType, null) {}
+				: this(root, parent, path, alias, joinType, null) { }
 
 			internal Subcriteria(CriteriaImpl root, ICriteria parent, string path, JoinType joinType)
 				: this(root, parent, path, null, joinType) { }
@@ -729,12 +727,12 @@ namespace NHibernate.Impl
 			{
 				get { return root.IsReadOnlyInitialized; }
 			}
-			
+
 			public bool IsReadOnly
 			{
 				get { return root.IsReadOnly; }
 			}
-				
+
 			public ICriteria SetLockMode(LockMode lockMode)
 			{
 				this.lockMode = lockMode;
@@ -827,32 +825,32 @@ namespace NHibernate.Impl
 				root.List(results);
 			}
 
-		    public Task ListAsync(IList results)
-		    {
-                return root.ListAsync(results);
-		    }
+			public Task ListAsync(IList results)
+			{
+				return root.ListAsync(results);
+			}
 
-		    public IList<T> List<T>()
+			public IList<T> List<T>()
 			{
 				return root.List<T>();
 			}
 
-            public Task<IList<T>> ListAsync<T>()
-            {
-                return root.ListAsync<T>();
-            }
+			public Task<IList<T>> ListAsync<T>()
+			{
+				return root.ListAsync<T>();
+			}
 
 			public T UniqueResult<T>()
 			{
 				object result = UniqueResult();
-				if (result == null && typeof (T).IsValueType)
+				if (result == null && typeof(T).IsValueType)
 				{
 					throw new InvalidCastException(
 						"UniqueResult<T>() cannot cast null result to value type. Call UniqueResult<T?>() instead");
 				}
 				else
 				{
-					return (T) result;
+					return (T)result;
 				}
 			}
 
@@ -934,13 +932,13 @@ namespace NHibernate.Impl
 				root.SetProjection(projections);
 				return this;
 			}
-			
+
 			public ICriteria SetReadOnly(bool readOnly)
 			{
 				root.SetReadOnly(readOnly);
 				return this;
 			}
-			
+
 			public ICriteria GetCriteriaByPath(string path)
 			{
 				return root.GetCriteriaByPath(path);
