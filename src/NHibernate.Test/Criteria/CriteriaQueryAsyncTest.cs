@@ -72,7 +72,7 @@ namespace NHibernate.Test.Criteria
 		{
 			// Arrange
 			const int numberOfTasks = 4;
-			var tasks = new Task[numberOfTasks];
+			var tasks = new Task<IList<Student>>[numberOfTasks];
 
 			using (ISession session = OpenSession())
 			using (ITransaction t = session.BeginTransaction())
@@ -97,10 +97,14 @@ namespace NHibernate.Test.Criteria
 					tasks[i] = task;
 				}
 
-				Task.WaitAll(tasks);
-				t.Commit();
-
 				// Assert: No Exceptions
+				// Assert: all tasks return all students
+				foreach (var task in tasks)
+				{
+					Assert.AreEqual(task.Result.Count, 5);					
+				}
+
+				t.Commit();
 			}
 
 			using (ISession session = OpenSession())
