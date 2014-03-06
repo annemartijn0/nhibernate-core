@@ -2,6 +2,12 @@ using System.Collections;
 using NHibernate.AdoNet;
 using NHibernate.Cfg;
 using NUnit.Framework;
+using System.Data;
+using Moq;
+using NHibernate.Driver;
+using System;
+using System.Collections.Generic;
+using System.Reflection;
 
 namespace NHibernate.Test.Ado
 {
@@ -20,14 +26,146 @@ namespace NHibernate.Test.Ado
 
 		protected override void Configure(Configuration configuration)
 		{
-			configuration.SetProperty(Environment.FormatSql, "true");
-			configuration.SetProperty(Environment.GenerateStatistics, "true");
-			configuration.SetProperty(Environment.BatchSize, "10");
+			configuration.SetProperty(NHibernate.Cfg.Environment.FormatSql, "true");
+			configuration.SetProperty(NHibernate.Cfg.Environment.GenerateStatistics, "true");
+			configuration.SetProperty(NHibernate.Cfg.Environment.BatchSize, "10");
 		}
 
 		protected override bool AppliesTo(Engine.ISessionFactoryImplementor factory)
 		{
 			return !(factory.Settings.BatcherFactory is NonBatchingBatcherFactory);
+		}
+
+		[Test, Description("The ExecuteReader method should return NHybridDataReader and should not return null")]
+		public void ExecuteReader_ShouldReturn_NHybridDataReader()
+		{
+			if (sessions.Settings.BatcherFactory is SqlClientBatchingBatcherFactory == false)
+				Assert.Ignore("This test is for SqlClientBatchingBatcher only");
+
+			// Arrange
+			IDataReader result;
+
+			using (ISession s = sessions.OpenSession())
+			{
+				var target = new SqlClientBatchingBatcher(s.GetSessionImplementation().ConnectionManager, null);
+
+				// Act
+				result = target.ExecuteReader(new Mock<IDbCommand>().Object);
+			}
+
+			// Assert
+			Assert.IsNotNull(result);
+			Assert.IsInstanceOf(typeof(NHybridDataReader), result);
+		}
+
+		[Test, Description("The ExecuteReader method should get connection property of command")]
+		public void ExecuteReader_ShouldCall_Command_Connection()
+		{
+			if (sessions.Settings.BatcherFactory is SqlClientBatchingBatcherFactory == false)
+				Assert.Ignore("This test is for SqlClientBatchingBatcher only");
+
+			// Arrange
+			var dbCommandMock = new Mock<IDbCommand>();
+
+			using (ISession s = sessions.OpenSession())
+			{
+				var target = new SqlClientBatchingBatcher(s.GetSessionImplementation().ConnectionManager, null);
+
+				// Act
+				target.ExecuteReader(dbCommandMock.Object);
+			}
+
+			// Assert
+			dbCommandMock.Verify(x => x.Connection, Times.Once);
+		}
+
+		[Test, Description("The ExecuteReader method should call ExecuteReader on command")]
+		public void ExecuteReader_ShouldCall_Command_ExecuteReader()
+		{
+			if (sessions.Settings.BatcherFactory is SqlClientBatchingBatcherFactory == false)
+				Assert.Ignore("This test is for SqlClientBatchingBatcher only");
+
+			// Arrange
+			var dbCommandMock = new Mock<IDbCommand>();
+
+			using (ISession s = sessions.OpenSession())
+			{
+				var target = new SqlClientBatchingBatcher(s.GetSessionImplementation().ConnectionManager, null);
+
+				// Act
+				target.ExecuteReader(dbCommandMock.Object);
+			}
+
+			// Assert
+			dbCommandMock.Verify(x => x.ExecuteReader(), Times.Once);
+		}
+
+		[Test, Description("The ExecuteReader method should catch Exceptions and add extra details to it")]
+		public void ExecuteReader_ShouldCatchExceptionAndAddDetails()
+		{
+			if (sessions.Settings.BatcherFactory is SqlClientBatchingBatcherFactory == false)
+				Assert.Ignore("This test is for SqlClientBatchingBatcher only");
+
+			// Arrange
+			var dbCommandMock = new Mock<IDbCommand>();
+			dbCommandMock.Setup(x => x.ExecuteReader()).Throws(new Exception());
+
+			using (ISession s = sessions.OpenSession())
+			{
+				var target = new SqlClientBatchingBatcher(s.GetSessionImplementation().ConnectionManager, null);
+
+				try
+				{
+					// Act
+					target.ExecuteReader(dbCommandMock.Object);
+				}
+				catch (Exception e)
+				{
+					// Assert
+					Assert.IsTrue(e.Data.Contains("actual-sql-query"));
+				}
+			}
+		}
+
+		[Test, Description("The ExecuteReader method should add the returned reader to readers to close")]
+		public void ExecuteReader_ShouldAddReaderToReadersToClose()
+		{
+			if (sessions.Settings.BatcherFactory is SqlClientBatchingBatcherFactory == false)
+				Assert.Ignore("This test is for SqlClientBatchingBatcher only");
+
+			// Arrange
+			const string queryString = "SELECT * FROM dbo.VerySimple;";
+
+			using (ISession s = sessions.OpenSession())
+			{
+				var target =
+					new SqlClientBatchingBatcher(s.GetSessionImplementation().ConnectionManager, null) as
+						AbstractBatcher;
+				var readersToClose = GetReadersToClose(target);
+
+				// Act
+				var result = target.ExecuteReader(new System.Data.SqlClient.SqlCommand
+					(queryString, s.Connection as System.Data.SqlClient.SqlConnection));
+
+				// Assert
+				Assert.IsTrue(readersToClose.Contains(result));
+			}
+		}
+
+		private static HashSet<IDataReader> GetReadersToClose(AbstractBatcher target)
+		{
+			const string fieldname = "_readersToClose";
+			var abstractBatcherType = typeof(AbstractBatcher);
+
+			var field = abstractBatcherType
+				.GetField(fieldname, BindingFlags.Instance | BindingFlags.NonPublic);
+
+			if (field == null)
+				Assert.Fail("{0}.{1} does not exist anymore, " +
+							"if you renamed this, you should adjust this test accordingly"
+							, abstractBatcherType.ToString(), fieldname);
+
+			return field.GetValue(target) as HashSet<IDataReader>;
 		}
 
 		[Test]
