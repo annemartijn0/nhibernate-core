@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Data;
+using System.Threading.Tasks;
 using NHibernate.Engine;
 using NHibernate.Impl;
 using NHibernate.Param;
@@ -73,6 +74,11 @@ namespace NHibernate.Loader.Criteria
 		public IList List(ISessionImplementor session)
 		{
 			return List(session, translator.GetQueryParameters(), querySpaces, resultTypes);
+		}
+
+		public Task<IList> ListAsync(ISessionImplementor session)
+		{
+			return ListAsync(session, translator.GetQueryParameters(), querySpaces, resultTypes);
 		}
 
 		protected override object GetResultColumnOrRow(object[] row, IResultTransformer customResultTransformer, IDataReader rs,

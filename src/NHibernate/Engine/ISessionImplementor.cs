@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Data;
+using System.Threading.Tasks;
 using NHibernate.AdoNet;
 using NHibernate.Cache;
 using NHibernate.Collection;
@@ -122,6 +123,8 @@ namespace NHibernate.Engine
 		void List(CriteriaImpl criteria, IList results);
 
 		IList List(CriteriaImpl criteria);
+
+		Task ListAsync(CriteriaImpl criteria, IList results);
 
 		/// <summary>
 		/// Execute an <c>Iterate()</c> query

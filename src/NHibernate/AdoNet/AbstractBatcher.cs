@@ -279,8 +279,8 @@ namespace NHibernate.AdoNet
 			return Task<IDataReader>
 				.Factory
 				.FromAsync(sqlCommand.BeginExecuteReader, sqlCommand.EndExecuteReader, null)
-				.ContinueWith(taskResult => 
-					EndExecuteReader(sqlCommand, taskResult, duration), cancellationToken);
+				.ContinueWith(task => 
+					EndExecuteReader(sqlCommand, task.Result, duration), cancellationToken);
 		}
 
 		private static System.Data.SqlClient.SqlCommand CheckIfSqlCommand(IDbCommand cmd)
@@ -308,13 +308,19 @@ namespace NHibernate.AdoNet
 			return duration;
 		}
 
-		private IDataReader EndExecuteReader(System.Data.SqlClient.SqlCommand sqlCommand, Task<IDataReader> task, Stopwatch duration)
+		private IDataReader EndExecuteReader(System.Data.SqlClient.SqlCommand sqlCommand, IDataReader reader, Stopwatch duration)
 		{
-			IDataReader reader = null;
-
 			try
 			{
-				reader = task.Result;
+				if (!_factory.ConnectionProvider.Driver.SupportsMultipleOpenReaders)
+				{
+					reader = new NHybridDataReader(reader);
+				}
+
+				_readersToClose.Add(reader);
+				LogOpenReader();
+
+				return reader;
 			}
 			finally
 			{
@@ -324,16 +330,6 @@ namespace NHibernate.AdoNet
 					_readersDuration[reader] = duration;
 				}
 			}
-
-			if (!_factory.ConnectionProvider.Driver.SupportsMultipleOpenReaders)
-			{
-				reader = new NHybridDataReader(reader);
-			}
-
-			_readersToClose.Add(reader);
-			LogOpenReader();
-
-			return reader;
 		}
 
 		/// <summary>

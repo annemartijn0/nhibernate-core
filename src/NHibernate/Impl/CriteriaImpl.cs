@@ -1,7 +1,9 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Runtime.Remoting.Messaging;
 using System.Text;
+using System.Threading.Tasks;
 using NHibernate.Criterion;
 using NHibernate.Engine;
 using NHibernate.SqlCommand;
@@ -270,11 +272,27 @@ namespace NHibernate.Impl
 			}
 		}
 
+		public Task ListAsync(IList results)
+		{
+			Before();
+
+			return session.ListAsync(this, results)
+				.ContinueWith(task => After());
+		}
+
 		public IList<T> List<T>()
 		{
 			List<T> results = new List<T>();
 			List(results);
 			return results;
+		}
+
+		public Task<IList<T>> ListAsync<T>()
+		{
+			var results = new List<T>();
+
+			return ListAsync(results)
+				.ContinueWith(task => results as IList<T>);
 		}
 
 		public T UniqueResult<T>()
@@ -800,9 +818,19 @@ namespace NHibernate.Impl
 				root.List(results);
 			}
 
+			public Task ListAsync(IList results)
+			{
+				return root.ListAsync(results);
+			}
+
 			public IList<T> List<T>()
 			{
 				return root.List<T>();
+			}
+
+			public Task<IList<T>> ListAsync<T>()
+			{
+				return root.ListAsync<T>();
 			}
 
 			public T UniqueResult<T>()

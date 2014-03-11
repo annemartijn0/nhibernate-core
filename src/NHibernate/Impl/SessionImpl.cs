@@ -5,6 +5,7 @@ using System.Data;
 using System.Linq.Expressions;
 using System.Runtime.Serialization;
 using System.Security;
+using System.Threading.Tasks;
 using NHibernate.AdoNet;
 using NHibernate.Collection;
 using NHibernate.Criterion;
@@ -12,6 +13,7 @@ using NHibernate.Engine;
 using NHibernate.Engine.Query;
 using NHibernate.Engine.Query.Sql;
 using NHibernate.Event;
+using NHibernate.Exceptions;
 using NHibernate.Hql;
 using NHibernate.Intercept;
 using NHibernate.Loader.Criteria;
@@ -1916,6 +1918,83 @@ namespace NHibernate.Impl
 					AfterOperation(success);
 				}
 			}
+		}
+
+		public override Task ListAsync(CriteriaImpl criteria, IList results)
+		{
+			using (new SessionIdLoggingContext(SessionId))
+			{
+				CheckAndUpdateSessionStatus();
+
+				string[] implementors = Factory.GetImplementors(criteria.EntityOrClassName);
+				int size = implementors.Length;
+
+				CriteriaLoader[] loaders = new CriteriaLoader[size];
+				ISet<string> spaces = new HashSet<string>();
+
+				for (int i = 0; i < size; i++)
+				{
+					loaders[i] = new CriteriaLoader(
+						GetOuterJoinLoadable(implementors[i]),
+						Factory,
+						criteria,
+						implementors[i],
+						enabledFilters
+						);
+
+					spaces.UnionWith(loaders[i].QuerySpaces);
+				}
+
+				AutoFlushIfRequired(spaces);
+
+				dontFlushFromFind++;
+
+				var listAsyncTasks = new List<Task<IList>>();
+				for (int i = size - 1; i >= 0; i--)
+				{
+					listAsyncTasks.Add(loaders[i].ListAsync(this));
+				}
+
+				return Task.Factory
+					.ContinueWhenAll(listAsyncTasks.ToArray(), tasks => 
+						EndListAsync(results, tasks));
+			}
+		}
+
+		private void EndListAsync(IList results, Task<IList>[] tasks)
+		{
+			bool success = false;
+
+			try
+			{
+				foreach (var task in tasks)
+				{
+					ArrayHelper.AddAll(results, task.Result);
+				}
+
+				success = true;
+			}
+			catch (AggregateException aggregateException)
+			{
+				HandleListAsyncExceptions(aggregateException);
+			}
+			finally
+			{
+				dontFlushFromFind--;
+				AfterOperation(success);
+			}
+		}
+
+		private void HandleListAsyncExceptions(AggregateException aggregateException)
+		{
+			aggregateException.Handle(exception =>
+			{
+				if (exception is HibernateException) // This we know how to handle.
+				{
+					throw exception;
+				}
+				throw Convert(exception, "Unable to perform find");
+			});
 		}
 
 		public bool Contains(object obj)

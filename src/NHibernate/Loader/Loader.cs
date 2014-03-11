@@ -5,6 +5,7 @@ using System.Data;
 using System.Diagnostics;
 using System.Linq;
 using System.Runtime.CompilerServices;
+using System.Threading.Tasks;
 using NHibernate.AdoNet;
 using NHibernate.Cache;
 using NHibernate.Collection;
@@ -259,6 +260,44 @@ namespace NHibernate.Loader
 		}
 
 		/// <summary>
+		/// Execute an SQL query asynchronously and attempt to instantiate instances of the class mapped by the given
+		/// persister from each row of the <c>DataReader</c>. If an object is supplied, will attempt to
+		/// initialize that object. If a collection is supplied, attempt to initialize that collection.
+		/// </summary>
+		private Task<IList> DoQueryAndInitializeNonLazyCollectionsAsync(ISessionImplementor session, QueryParameters queryParameters, bool returnProxies)
+		{
+			IPersistenceContext persistenceContext = session.PersistenceContext;
+			bool defaultReadOnlyOrig = persistenceContext.DefaultReadOnly;
+
+			if (queryParameters.IsReadOnlyInitialized)
+				persistenceContext.DefaultReadOnly = queryParameters.ReadOnly;
+			else
+				queryParameters.ReadOnly = persistenceContext.DefaultReadOnly;
+
+			persistenceContext.BeforeLoad();
+
+			return DoQueryAsync(session, queryParameters, returnProxies)
+				.ContinueWith(task =>
+					EndDoQueryAndInitializeNonLazyCollectionsAsync(task, persistenceContext, defaultReadOnlyOrig));
+		}
+
+		private IList EndDoQueryAndInitializeNonLazyCollectionsAsync(Task<IList> task, IPersistenceContext persistenceContext, bool defaultReadOnlyOrig)
+		{
+			try
+			{
+				persistenceContext.InitializeNonLazyCollections();
+			}
+			finally
+			{
+				persistenceContext.AfterLoad();
+
+				persistenceContext.DefaultReadOnly = defaultReadOnlyOrig;
+			}
+
+			return task.Result;
+		}
+
+		/// <summary>
 		/// Loads a single row from the result set.  This is the processing used from the
 		/// ScrollableResults where no collection fetches were encountered.
 		/// </summary>
@@ -410,79 +449,99 @@ namespace NHibernate.Loader
 
 				int entitySpan = EntityPersisters.Length;
 
-				List<object> hydratedObjects = entitySpan == 0 ? null : new List<object>(entitySpan*10);
+				List<object> hydratedObjects = entitySpan == 0 ? null : new List<object>(entitySpan * 10);
 
 				IDbCommand st = PrepareQueryCommand(queryParameters, false, session);
 
 				IDataReader rs = GetResultSet(st, queryParameters.HasAutoDiscoverScalarTypes, queryParameters.Callable, selection,
 											  session);
 
-				// would be great to move all this below here into another method that could also be used
-				// from the new scrolling stuff.
-				//
-				// Would need to change the way the max-row stuff is handled (i.e. behind an interface) so
-				// that I could do the control breaking at the means to know when to stop
-				LockMode[] lockModeArray = GetLockModes(queryParameters.LockModes);
-				EntityKey optionalObjectKey = GetOptionalObjectKey(queryParameters, session);
-
-				bool createSubselects = IsSubselectLoadingEnabled;
-				List<EntityKey[]> subselectResultKeys = createSubselects ? new List<EntityKey[]>() : null;
-				IList results = new List<object>();
-
-				try
-				{
-					HandleEmptyCollections(queryParameters.CollectionKeys, rs, session);
-					EntityKey[] keys = new EntityKey[entitySpan]; // we can reuse it each time
-
-					if (Log.IsDebugEnabled)
-					{
-						Log.Debug("processing result set");
-					}
-
-					int count;
-					for (count = 0; count < maxRows && rs.Read(); count++)
-					{
-						if (Log.IsDebugEnabled)
-						{
-							Log.Debug("result set row: " + count);
-						}
-
-						object result = GetRowFromResultSet(rs, session, queryParameters, lockModeArray, optionalObjectKey,
-															hydratedObjects,
-															keys, returnProxies);
-						results.Add(result);
-
-						if (createSubselects)
-						{
-							subselectResultKeys.Add(keys);
-							keys = new EntityKey[entitySpan]; //can't reuse in this case
-						}
-					}
-
-					if (Log.IsDebugEnabled)
-					{
-						Log.Debug(string.Format("done processing result set ({0} rows)", count));
-					}
-				}
-				catch (Exception e)
-				{
-					e.Data["actual-sql-query"] = st.CommandText;
-					throw;
-				}
-				finally
-				{
-					session.Batcher.CloseCommand(st, rs);
-				}
-
-				InitializeEntitiesAndCollections(hydratedObjects, rs, session, queryParameters.IsReadOnly(session));
-
-				if (createSubselects)
-				{
-					CreateSubselects(subselectResultKeys, queryParameters, session);
-				}
-
-				return results;
+				return Results(session, queryParameters, returnProxies, rs, entitySpan, maxRows, hydratedObjects, st);
 			}
+		}
+
+		private Task<IList> DoQueryAsync(ISessionImplementor session, QueryParameters queryParameters, bool returnProxies)
+		{
+			using (new SessionIdLoggingContext(session.SessionId))
+			{
+				RowSelection selection = queryParameters.RowSelection;
+				int maxRows = HasMaxRows(selection) ? selection.MaxRows : int.MaxValue;
+
+				int entitySpan = EntityPersisters.Length;
+
+				List<object> hydratedObjects = entitySpan == 0 ? null : new List<object>(entitySpan * 10);
+
+				IDbCommand st = PrepareQueryCommand(queryParameters, false, session);
+
+				return GetResultSetAsync(st, queryParameters.HasAutoDiscoverScalarTypes, queryParameters.Callable, selection, session)
+					.ContinueWith(task =>
+						Results(session, queryParameters, returnProxies, task.Result, entitySpan, maxRows, hydratedObjects, st));
+			}
+		}
+
+		private IList Results(ISessionImplementor session, QueryParameters queryParameters, bool returnProxies, IDataReader rs,
+			int entitySpan, int maxRows, List<object> hydratedObjects, IDbCommand st)
+		{
+			LockMode[] lockModeArray = GetLockModes(queryParameters.LockModes);
+			EntityKey optionalObjectKey = GetOptionalObjectKey(queryParameters, session);
+
+			bool createSubselects = IsSubselectLoadingEnabled;
+			List<EntityKey[]> subselectResultKeys = createSubselects ? new List<EntityKey[]>() : null;
+			IList results = new List<object>();
+
+			try
+			{
+				HandleEmptyCollections(queryParameters.CollectionKeys, rs, session);
+				EntityKey[] keys = new EntityKey[entitySpan]; // we can reuse it each time
+
+				if (Log.IsDebugEnabled)
+				{
+					Log.Debug("processing result set");
+				}
+
+				int count;
+				for (count = 0; count < maxRows && rs.Read(); count++)
+				{
+					if (Log.IsDebugEnabled)
+					{
+						Log.Debug("result set row: " + count);
+					}
+
+					object result = GetRowFromResultSet(rs, session, queryParameters, lockModeArray, optionalObjectKey,
+						hydratedObjects,
+						keys, returnProxies);
+					results.Add(result);
+
+					if (createSubselects)
+					{
+						subselectResultKeys.Add(keys);
+						keys = new EntityKey[entitySpan]; //can't reuse in this case
+					}
+				}
+
+				if (Log.IsDebugEnabled)
+				{
+					Log.Debug(string.Format("done processing result set ({0} rows)", count));
+				}
+			}
+			catch (Exception e)
+			{
+				e.Data["actual-sql-query"] = st.CommandText;
+				throw;
+			}
+			finally
+			{
+				session.Batcher.CloseCommand(st, rs);
+			}
+
+			InitializeEntitiesAndCollections(hydratedObjects, rs, session, queryParameters.IsReadOnly(session));
+
+			if (createSubselects)
+			{
+				CreateSubselects(subselectResultKeys, queryParameters, session);
+			}
+
+			return results;
 		}
 
 		protected bool HasSubselectLoadableCollections()
@@ -1225,6 +1284,58 @@ namespace NHibernate.Loader
 			}
 		}
 
+		/// <summary>
+		/// Fetch a <c>IDbCommand</c>, call <c>SetMaxRows</c> and then execute it,
+		/// advance to the first result and return an SQL <c>IDataReader</c> Asynchronously
+		/// </summary>
+		/// <param name="dbCommand">The <see cref="IDbCommand" /> to execute.</param>
+		/// <param name="selection">The <see cref="RowSelection"/> to apply to the <see cref="IDbCommand"/> and <see cref="IDataReader"/>.</param>
+		/// <param name="autoDiscoverTypes">true if result types need to be auto-discovered by the loader; false otherwise.</param>
+		/// <param name="session">The <see cref="ISession" /> to load in.</param>
+		/// <param name="callable"></param>
+		/// <returns>An IDataReader advanced to the first record in RowSelection.</returns>
+		protected Task<IDataReader> GetResultSetAsync(IDbCommand dbCommand, bool autoDiscoverTypes, bool callable, RowSelection selection, ISessionImplementor session)
+		{
+			Log.Info(dbCommand.CommandText);
+
+			return session.Batcher
+				.ExecuteReaderAsync(dbCommand)
+				.ContinueWith(taskResult =>
+					EndGetResultSet(taskResult, dbCommand, session, selection, autoDiscoverTypes));
+		}
+
+		private IDataReader EndGetResultSet(Task<IDataReader> task, IDbCommand dbCommand, ISessionImplementor session, RowSelection selection, bool autoDiscoverTypes)
+		{
+			IDataReader reader = null;
+			try
+			{
+				reader = task.Result;
+				//NH: this is checked outside the WrapResultSet because we
+				// want to avoid the syncronization overhead in the vast majority
+				// of cases where IsWrapResultSetsEnabled is set to false
+				if (session.Factory.Settings.IsWrapResultSetsEnabled)
+					reader = WrapResultSet(reader);
+
+				Dialect.Dialect dialect = session.Factory.Dialect;
+				if (!dialect.SupportsLimitOffset || !UseLimit(selection, dialect))
+				{
+					Advance(reader, selection);
+				}
+
+				if (autoDiscoverTypes)
+				{
+					AutoDiscoverTypes(reader);
+				}
+				return reader;
+			}
+			catch (Exception sqle)
+			{
+				ADOExceptionReporter.LogExceptions(sqle);
+				session.Batcher.CloseCommand(dbCommand, reader);
+				throw;
+			}
+		}
+
 		protected virtual void AutoDiscoverTypes(IDataReader rs)
 		{
 			throw new AssertionFailure("Auto discover types not supported in this loader");
@@ -1467,9 +1578,35 @@ namespace NHibernate.Loader
 			return ListIgnoreQueryCache(session, queryParameters);
 		}
 
+		/// <summary>
+		/// Return the query results asynchronously, using the query cache, called
+		/// by subclasses that implement cacheable queries
+		/// </summary>
+		/// <param name="session"></param>
+		/// <param name="queryParameters"></param>
+		/// <param name="querySpaces"></param>
+		/// <param name="resultTypes"></param>
+		/// <returns></returns>
+		protected Task<IList> ListAsync(ISessionImplementor session, QueryParameters queryParameters, ISet<string> querySpaces, IType[] resultTypes)
+		{
+			bool cacheable = _factory.Settings.IsQueryCacheEnabled && queryParameters.Cacheable;
+
+			if (cacheable)
+			{
+				return ListUsingQueryCacheAsync(session, queryParameters, querySpaces, resultTypes);
+			}
+
+			return ListIgnoreQueryCacheAsync(session, queryParameters);
+		}
+
 		private IList ListIgnoreQueryCache(ISessionImplementor session, QueryParameters queryParameters)
 		{
 			return GetResultList(DoList(session, queryParameters), queryParameters.ResultTransformer);
+		}
+
+		private Task<IList> ListIgnoreQueryCacheAsync(ISessionImplementor session, QueryParameters queryParameters)
+		{
+			return DoListAsync(session, queryParameters);
 		}
 
 		private IList ListUsingQueryCache(ISessionImplementor session, QueryParameters queryParameters, ISet<string> querySpaces, IType[] resultTypes)
@@ -1488,6 +1625,34 @@ namespace NHibernate.Loader
 			}
 
 			return GetResultList(result, queryParameters.ResultTransformer);
+		}
+
+		private Task<IList> ListUsingQueryCacheAsync(ISessionImplementor session, QueryParameters queryParameters, ISet<string> querySpaces, IType[] resultTypes)
+		{
+			IQueryCache queryCache = _factory.GetQueryCache(queryParameters.CacheRegion);
+
+			ISet<FilterKey> filterKeys = FilterKey.CreateFilterKeys(session.EnabledFilters, session.EntityMode);
+			QueryKey key = new QueryKey(Factory, SqlString, queryParameters, filterKeys);
+
+			var taskCompletionSource = new TaskCompletionSource<IList>();
+			var result = GetResultFromQueryCache(session, queryParameters, querySpaces, resultTypes, queryCache, key);
+
+			if (IsResultNullOrNotSetToTaskCompletionSource(result, taskCompletionSource))
+			{
+				var doListAsyncTask = DoListAsync(session, queryParameters);
+
+				doListAsyncTask.ContinueWith(task =>
+					PutResultInQueryCache(session, queryParameters, resultTypes, queryCache, key, task.Result));
+
+				return doListAsyncTask;
+			}
+
+			return taskCompletionSource.Task;
+		}
+
+		private static bool IsResultNullOrNotSetToTaskCompletionSource(IList result, TaskCompletionSource<IList> taskCompletionSource)
+		{
+			return result == null || !taskCompletionSource.TrySetResult(result);
 		}
 
 		private IList GetResultFromQueryCache(ISessionImplementor session, QueryParameters queryParameters,
@@ -1552,11 +1717,7 @@ namespace NHibernate.Loader
 		protected IList DoList(ISessionImplementor session, QueryParameters queryParameters)
 		{
 			bool statsEnabled = Factory.Statistics.IsStatisticsEnabled;
-			var stopWatch = new Stopwatch();
-			if (statsEnabled)
-			{
-				stopWatch.Start();
-			}
+			var stopWatch = StopWatch(statsEnabled);
 
 			IList result;
 			try
@@ -1579,6 +1740,67 @@ namespace NHibernate.Loader
 				Factory.StatisticsImplementor.QueryExecuted(QueryIdentifier, result.Count, stopWatch.Elapsed);
 			}
 			return result;
+		}
+
+		/// <summary>
+		/// Actually execute a query, ignoring the query cache
+		/// </summary>
+		/// <param name="session"></param>
+		/// <param name="queryParameters"></param>
+		/// <returns></returns>
+		protected Task<IList> DoListAsync(ISessionImplementor session, QueryParameters queryParameters)
+		{
+			bool statsEnabled = Factory.Statistics.IsStatisticsEnabled;
+			var stopWatch = StopWatch(statsEnabled);
+
+			return DoQueryAndInitializeNonLazyCollectionsAsync(session, queryParameters, true)
+				.ContinueWith(task =>
+					EndDoList(statsEnabled, stopWatch, task, queryParameters));
+		}
+
+		private static Stopwatch StopWatch(bool statsEnabled)
+		{
+			var stopWatch = new Stopwatch();
+			if (statsEnabled)
+			{
+				stopWatch.Start();
+			}
+			return stopWatch;
+		}
+
+		private IList EndDoList(bool statsEnabled, Stopwatch stopWatch, Task<IList> task, QueryParameters queryParameters)
+		{
+			IList result = null;
+			try
+			{
+				result = task.Result;
+			}
+			catch (AggregateException aggregateException)
+			{
+				HandleDoQueryAndInitializeNonLazyCollectionsAsyncExceptions(aggregateException, queryParameters);
+			}
+
+			if (statsEnabled)
+			{
+				stopWatch.Stop();
+				Factory.StatisticsImplementor.QueryExecuted(QueryIdentifier, result.Count, stopWatch.Elapsed);
+			}
+
+			return result;
+		}
+
+		private void HandleDoQueryAndInitializeNonLazyCollectionsAsyncExceptions(AggregateException aggregateException, QueryParameters queryParameters)
+		{
+			aggregateException.Handle(x =>
+			{
+				if (x is HibernateException) // This we know how to handle.
+				{
+					throw x;
+				}
+				throw ADOExceptionHelper.Convert(Factory.SQLExceptionConverter, x, "could not execute query",
+						SqlString,
+						queryParameters.PositionalParameterValues, queryParameters.NamedParameters);
+			});
 		}
 
 		/// <summary>
