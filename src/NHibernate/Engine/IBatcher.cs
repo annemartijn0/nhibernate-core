@@ -1,5 +1,7 @@
 using System;
 using System.Data;
+using System.Threading;
+using System.Threading.Tasks;
 using NHibernate.AdoNet;
 using NHibernate.SqlCommand;
 using NHibernate.SqlTypes;
@@ -119,6 +121,29 @@ namespace NHibernate.Engine
 		/// <see cref="IDataReader"/>s it can have are followed.
 		/// </remarks>
 		IDataReader ExecuteReader(IDbCommand cmd);
+
+		/// <summary>
+		/// Asynchronously gets an <see cref="IDataReader"/> by calling ExecuteReaderAsync on the <see cref="IDbCommand"/>.
+		/// </summary>
+		/// <param name="cmd">The <see cref="IDbCommand"/> to execute to get the <see cref="IDataReader"/>.</param>
+		/// <returns>The <see cref="IDataReader"/> from the <see cref="IDbCommand"/>.</returns>
+		/// <remarks>
+		/// The Batcher is responsible for ensuring that all of the Drivers rules for how many open
+		/// <see cref="IDataReader"/>s it can have are followed.
+		/// </remarks>
+		Task<IDataReader> ExecuteReaderAsync(IDbCommand cmd);
+
+		/// <summary>
+		/// Asynchronously gets an <see cref="IDataReader"/> by calling ExecuteReaderAsync on the <see cref="IDbCommand"/>.
+		/// </summary>
+		/// <param name="dbCommand">The <see cref="IDbCommand"/> to execute to get the <see cref="IDataReader"/>. Should be of type <see cref="System.Data.SqlClient.SqlCommand"/></param>
+		/// <param name="cancellationToken">The <see cref="CancellationToken"/> propagates notification that operations should be canceled.</param>
+		/// <returns>The <see cref="IDataReader"/> from the <see cref="IDbCommand"/>.</returns>
+		/// <remarks>
+		/// The Batcher is responsible for ensuring that all of the Drivers rules for how many open
+		/// <see cref="IDataReader"/>s it can have are followed.
+		/// </remarks>
+		Task<IDataReader> ExecuteReaderAsync(IDbCommand dbCommand, CancellationToken cancellationToken);
 
 		/// <summary>
 		/// Executes the <see cref="IDbCommand"/>. 

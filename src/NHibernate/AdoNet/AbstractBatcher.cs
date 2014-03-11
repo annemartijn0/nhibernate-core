@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Data;
 using System.Diagnostics;
 using System.Threading;
-
+using System.Threading.Tasks;
 using NHibernate.Driver;
 using NHibernate.Engine;
 using NHibernate.Exceptions;
@@ -243,6 +243,96 @@ namespace NHibernate.AdoNet
 
 			_readersToClose.Add(reader);
 			LogOpenReader();
+			return reader;
+		}
+
+		/// <summary>
+		/// Asynchronously gets an <see cref="IDataReader"/> by calling ExecuteReaderAsync on the <see cref="IDbCommand"/>.
+		/// </summary>
+		/// <param name="dbCommand">The <see cref="IDbCommand"/> to execute to get the <see cref="IDataReader"/>.
+		/// Should be of type <see cref="System.Data.SqlClient.SqlCommand"/></param>
+		/// <returns>The <see cref="IDataReader"/> from the <see cref="IDbCommand"/>.</returns>
+		/// <remarks>
+		/// The Batcher is responsible for ensuring that all of the Drivers rules for how many open
+		/// <see cref="IDataReader"/>s it can have are followed.
+		/// </remarks>
+		public virtual Task<IDataReader> ExecuteReaderAsync(IDbCommand dbCommand)
+		{
+			return ExecuteReaderAsync(dbCommand, CancellationToken.None);
+		}
+
+		/// <summary>
+		/// Asynchronously gets an <see cref="IDataReader"/> by calling ExecuteReaderAsync on the <see cref="IDbCommand"/>.
+		/// </summary>
+		/// <param name="dbCommand">The <see cref="IDbCommand"/> to execute to get the <see cref="IDataReader"/>. Should be of type <see cref="System.Data.SqlClient.SqlCommand"/></param>
+		/// <param name="cancellationToken">The <see cref="CancellationToken"/> propagates notification that operations should be canceled.</param>
+		/// <returns>The <see cref="IDataReader"/> from the <see cref="IDbCommand"/>.</returns>
+		/// <remarks>
+		/// The Batcher is responsible for ensuring that all of the Drivers rules for how many open
+		/// <see cref="IDataReader"/>s it can have are followed.
+		/// </remarks>
+		public virtual Task<IDataReader> ExecuteReaderAsync(IDbCommand dbCommand, CancellationToken cancellationToken)
+		{
+			var sqlCommand = CheckIfSqlCommand(dbCommand);
+			var duration = PrepareExecuteReader(dbCommand);
+
+			return Task<IDataReader>
+				.Factory
+				.FromAsync(sqlCommand.BeginExecuteReader, sqlCommand.EndExecuteReader, null)
+				.ContinueWith(taskResult => 
+					EndExecuteReader(sqlCommand, taskResult, duration), cancellationToken);
+		}
+
+		private static System.Data.SqlClient.SqlCommand CheckIfSqlCommand(IDbCommand cmd)
+		{
+			System.Data.SqlClient.SqlCommand sqlCommand = null;
+
+			if (cmd is System.Data.SqlClient.SqlCommand)
+				sqlCommand = cmd as System.Data.SqlClient.SqlCommand;
+			else
+				throw new NotSupportedException("asynchronous reading is MSSQL only");
+
+			return sqlCommand;
+		}
+
+		private Stopwatch PrepareExecuteReader(IDbCommand cmd)
+		{
+			CheckReaders();
+			LogCommand(cmd);
+			Prepare(cmd);
+
+			Stopwatch duration = null;
+			if (Log.IsDebugEnabled)
+				duration = Stopwatch.StartNew();
+
+			return duration;
+		}
+
+		private IDataReader EndExecuteReader(System.Data.SqlClient.SqlCommand sqlCommand, Task<IDataReader> task, Stopwatch duration)
+		{
+			IDataReader reader = null;
+
+			try
+			{
+				reader = task.Result;
+			}
+			finally
+			{
+				if (Log.IsDebugEnabled && duration != null && reader != null)
+				{
+					Log.DebugFormat("ExecuteReader took {0} ms", duration.ElapsedMilliseconds);
+					_readersDuration[reader] = duration;
+				}
+			}
+
+			if (!_factory.ConnectionProvider.Driver.SupportsMultipleOpenReaders)
+			{
+				reader = new NHybridDataReader(reader);
+			}
+
+			_readersToClose.Add(reader);
+			LogOpenReader();
+
 			return reader;
 		}
 

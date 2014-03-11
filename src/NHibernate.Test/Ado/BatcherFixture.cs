@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Threading.Tasks;
 using NHibernate.AdoNet;
 using NHibernate.Cfg;
 using NUnit.Framework;
@@ -149,6 +150,156 @@ namespace NHibernate.Test.Ado
 
 				// Assert
 				Assert.IsTrue(readersToClose.Contains(result));
+			}
+		}
+
+		[Test, Description("The ExecuteReaderAsync method should only take sqlcommands")]
+		[ExpectedException(typeof(NotSupportedException))]
+		public void ExecuteReaderAsync_ShouldOnlyTake_SqlCommand()
+		{
+			if (sessions.Settings.BatcherFactory is SqlClientBatchingBatcherFactory == false)
+				Assert.Ignore("This test is for SqlClientBatchingBatcher only");
+
+			// Arrange
+			var dbCommandMock = new Mock<IDbCommand>();
+
+			using (ISession s = sessions.OpenSession())
+			{
+				var target = new SqlClientBatchingBatcher(s.GetSessionImplementation().ConnectionManager, null) as AbstractBatcher;
+
+				// Act
+				try
+				{
+					target.ExecuteReaderAsync(dbCommandMock.Object).Wait();
+				}
+				catch (AggregateException aggregateException)
+				{
+					HandleExecuteReaderAsyncExceptions(aggregateException);
+				}
+			}
+
+			// Assert
+			// Expected Exception: NotSupportedException
+		}
+
+		private static void HandleExecuteReaderAsyncExceptions(AggregateException aggregateException)
+		{
+			foreach (var exception in aggregateException.InnerExceptions)
+			{
+				if (exception is NotSupportedException)
+				{
+					throw exception;
+				}
+			}
+		}
+
+		[Test]
+		[Description("The ExecuteReaderAsync method should return NHybridDataReader and should not return null")]
+		public void ExecuteReaderAsync_ShouldReturn_NHybridDataReader()
+		{
+			if (sessions.Settings.BatcherFactory is SqlClientBatchingBatcherFactory == false)
+				Assert.Ignore("This test is for SqlClientBatchingBatcher only");
+
+			// Arrange
+			IDataReader result;
+			const string queryString = "SELECT * FROM dbo.VerySimple;";
+
+			using (ISession s = sessions.OpenSession())
+			{
+				var target = new SqlClientBatchingBatcher(s.GetSessionImplementation().ConnectionManager, null) as AbstractBatcher;
+
+				// Act
+				result = target.ExecuteReaderAsync(new System.Data.SqlClient.SqlCommand
+					(queryString, s.Connection as System.Data.SqlClient.SqlConnection)).Result;
+			}
+
+			// Assert
+			Assert.IsNotNull(result);
+			Assert.IsInstanceOf(typeof(NHybridDataReader), result);
+		}
+
+		[Test, Description("The ExecuteReaderAsync method should return working task")]
+		public void ExecuteReaderAsync_ShouldReturn_WorkingTask()
+		{
+			if (sessions.Settings.BatcherFactory is SqlClientBatchingBatcherFactory == false)
+				Assert.Ignore("This test is for SqlClientBatchingBatcher only");
+
+			// Arrange
+			const string queryString = "SELECT * FROM dbo.VerySimple;";
+
+			using (ISession s = sessions.OpenSession())
+			{
+				var target =
+					new SqlClientBatchingBatcher(s.GetSessionImplementation().ConnectionManager, null) as
+						AbstractBatcher;
+
+				// Act
+				var result = target.ExecuteReaderAsync(new System.Data.SqlClient.SqlCommand
+					(queryString, s.Connection as System.Data.SqlClient.SqlConnection));
+
+				// Assert
+				Assert.IsTrue(result.Status != TaskStatus.Canceled);
+				Assert.IsTrue(result.Status != TaskStatus.Faulted);
+
+				result.Wait();
+			}
+		}
+
+		[Test, Description("The ExecuteReaderAsync method should add the returned reader to readers to close")]
+		public void ExecuteReaderAsync_ShouldAddReaderToReadersToClose()
+		{
+			if (sessions.Settings.BatcherFactory is SqlClientBatchingBatcherFactory == false)
+				Assert.Ignore("This test is for SqlClientBatchingBatcher only");
+
+			// Arrange
+			const string queryString = "SELECT * FROM dbo.VerySimple;";
+
+			using (ISession s = sessions.OpenSession())
+			{
+				var target =
+					new SqlClientBatchingBatcher(s.GetSessionImplementation().ConnectionManager, null) as
+						AbstractBatcher;
+				var readersToClose = GetReadersToClose(target);
+
+				// Act
+				var result = target.ExecuteReaderAsync(new System.Data.SqlClient.SqlCommand
+					(queryString, s.Connection as System.Data.SqlClient.SqlConnection))
+					.Result;
+
+				// Assert
+				Assert.IsTrue(readersToClose.Contains(result));
+			}
+		}
+
+		[Test, Description("The ExecuteReaderAsync method should add the returned reader to readers to close")]
+		public void ExecuteReaderAsync_MultipleTimes()
+		{
+			if (sessions.Settings.BatcherFactory is SqlClientBatchingBatcherFactory == false)
+				Assert.Ignore("This test is for SqlClientBatchingBatcher only");
+
+			// Arrange
+			const string queryString = "SELECT * FROM dbo.VerySimple;";
+			const int numberOfTasks = 4;
+			var tasks = new Task[numberOfTasks];
+
+			using (ISession s = sessions.OpenSession())
+			{
+				var target =
+					new SqlClientBatchingBatcher(s.GetSessionImplementation().ConnectionManager, null) as
+						AbstractBatcher;
+				var readersToClose = GetReadersToClose(target);
+
+				// Act
+				for (int i = 0; i < numberOfTasks; i++)
+				{
+					tasks[i] = target.ExecuteReaderAsync(new System.Data.SqlClient.SqlCommand
+						(queryString, s.Connection as System.Data.SqlClient.SqlConnection));
+				}
+
+				Task.Factory.ContinueWhenAll(tasks, taskResult =>
+					// Assert
+					Assert.AreEqual(numberOfTasks, readersToClose.Count)
+				).Wait();
 			}
 		}
 
