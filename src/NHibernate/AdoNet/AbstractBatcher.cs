@@ -285,11 +285,9 @@ namespace NHibernate.AdoNet
 
 		private static System.Data.SqlClient.SqlCommand CheckIfSqlCommand(IDbCommand cmd)
 		{
-			System.Data.SqlClient.SqlCommand sqlCommand = null;
+			var sqlCommand = cmd as System.Data.SqlClient.SqlCommand;
 
-			if (cmd is System.Data.SqlClient.SqlCommand)
-				sqlCommand = cmd as System.Data.SqlClient.SqlCommand;
-			else
+			if (cmd == null)
 				throw new NotSupportedException("asynchronous reading is MSSQL only");
 
 			return sqlCommand;
