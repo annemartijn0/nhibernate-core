@@ -60,7 +60,7 @@ namespace NHibernate.AdoNet
 		{
 			var sqlCommand = cmd as System.Data.SqlClient.SqlCommand;
 
-			if (cmd == null)
+			if (sqlCommand == null)
 				throw new NotSupportedException("DbCommand Should have been a SqlCommand");
 
 			return sqlCommand;
