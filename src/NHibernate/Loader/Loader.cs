@@ -530,6 +530,10 @@ namespace NHibernate.Loader
 				e.Data["actual-sql-query"] = st.CommandText;
 				throw;
 			}
+			finally
+ 			{
+ 				session.Batcher.CloseCommand(st, rs);
+			}
 
 			InitializeEntitiesAndCollections(hydratedObjects, rs, session, queryParameters.IsReadOnly(session));
 
