@@ -1,4 +1,4 @@
-using System.Data;
+using System.Data;using System.Data.Common;
 using NHibernate.Engine.Query;
 using NHibernate.SqlTypes;
 
@@ -33,7 +33,7 @@ namespace NHibernate.Driver
 			get { return ":"; }
 		}
 
-		protected override void InitializeParameter(IDbDataParameter dbParam, string name, SqlType sqlType)
+		protected override void InitializeParameter(DbParameter dbParam, string name, SqlType sqlType)
 		{
 			if (sqlType.DbType == DbType.Guid)
 			{
@@ -45,7 +45,7 @@ namespace NHibernate.Driver
 			}
 		}
 
-		protected override void OnBeforePrepare(IDbCommand command)
+		protected override void OnBeforePrepare(DbCommand command)
 		{
 			base.OnBeforePrepare(command);
 

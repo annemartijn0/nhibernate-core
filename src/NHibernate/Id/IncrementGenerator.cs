@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
-using System.Data;
-using System.Data.Common;
+using System.Data;using System.Data.Common;
 using System.Runtime.CompilerServices;
 using System.Text;
 using NHibernate.Engine;
@@ -102,7 +101,7 @@ namespace NHibernate.Id
 			try
 			{
 				var cmd = session.Batcher.PrepareCommand(CommandType.Text, _sql, SqlTypeFactory.NoTypes);
-				IDataReader reader = null;
+				DbDataReader reader = null;
 				try
 				{
 					reader = session.Batcher.ExecuteReader(cmd);

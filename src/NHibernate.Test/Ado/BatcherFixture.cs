@@ -1,9 +1,9 @@
 using System.Collections;
+using System.Data.Common;
 using System.Threading.Tasks;
 using NHibernate.AdoNet;
 using NHibernate.Cfg;
 using NUnit.Framework;
-using System.Data;
 using Moq;
 using NHibernate.Driver;
 using System;
@@ -44,14 +44,14 @@ namespace NHibernate.Test.Ado
 				Assert.Ignore("This test is for SqlClientBatchingBatcher only");
 
 			// Arrange
-			IDataReader result;
+			DbDataReader result;
 
 			using (ISession s = sessions.OpenSession())
 			{
 				var target = new SqlClientBatchingBatcher(s.GetSessionImplementation().ConnectionManager, null);
 
 				// Act
-				result = target.ExecuteReader(new Mock<IDbCommand>().Object);
+				result = target.ExecuteReader(new Mock<DbCommand>().Object);
 			}
 
 			// Assert
@@ -66,7 +66,7 @@ namespace NHibernate.Test.Ado
 				Assert.Ignore("This test is for SqlClientBatchingBatcher only");
 
 			// Arrange
-			var dbCommandMock = new Mock<IDbCommand>();
+			var dbCommandMock = new Mock<DbCommand>();
 
 			using (ISession s = sessions.OpenSession())
 			{
@@ -87,7 +87,7 @@ namespace NHibernate.Test.Ado
 				Assert.Ignore("This test is for SqlClientBatchingBatcher only");
 
 			// Arrange
-			var dbCommandMock = new Mock<IDbCommand>();
+			var dbCommandMock = new Mock<DbCommand>();
 
 			using (ISession s = sessions.OpenSession())
 			{
@@ -108,7 +108,7 @@ namespace NHibernate.Test.Ado
 				Assert.Ignore("This test is for SqlClientBatchingBatcher only");
 
 			// Arrange
-			var dbCommandMock = new Mock<IDbCommand>();
+			var dbCommandMock = new Mock<DbCommand>();
 			dbCommandMock.Setup(x => x.ExecuteReader()).Throws(new Exception());
 
 			using (ISession s = sessions.OpenSession())
@@ -161,7 +161,7 @@ namespace NHibernate.Test.Ado
 				Assert.Ignore("This test is for SqlClientBatchingBatcher only");
 
 			// Arrange
-			var dbCommandMock = new Mock<IDbCommand>();
+			var dbCommandMock = new Mock<DbCommand>();
 
 			using (ISession s = sessions.OpenSession())
 			{
@@ -201,7 +201,7 @@ namespace NHibernate.Test.Ado
 				Assert.Ignore("This test is for SqlClientBatchingBatcher only");
 
 			// Arrange
-			IDataReader result;
+			DbDataReader result;
 			const string queryString = "SELECT * FROM dbo.VerySimple;";
 
 			using (ISession s = sessions.OpenSession())
@@ -303,7 +303,7 @@ namespace NHibernate.Test.Ado
 			}
 		}
 
-		private static HashSet<IDataReader> GetReadersToClose(AbstractBatcher target)
+		private static HashSet<DbDataReader> GetReadersToClose(AbstractBatcher target)
 		{
 			const string fieldname = "_readersToClose";
 			var abstractBatcherType = typeof(AbstractBatcher);
@@ -316,7 +316,7 @@ namespace NHibernate.Test.Ado
 							"if you renamed this, you should adjust this test accordingly"
 							, abstractBatcherType.ToString(), fieldname);
 
-			return field.GetValue(target) as HashSet<IDataReader>;
+			return field.GetValue(target) as HashSet<DbDataReader>;
 		}
 
 		[Test]

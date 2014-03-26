@@ -1,5 +1,5 @@
 using System;
-using System.Data;
+using System.Data;using System.Data.Common;
 using System.Data.Common;
 using System.Diagnostics;
 using System.Text;
@@ -44,19 +44,19 @@ namespace NHibernate.AdoNet
 		/// The Batcher is responsible for ensuring that all of the Drivers rules for how many open
 		/// <see cref="IDataReader"/>s it can have are followed.
 		/// </remarks>
-		public override Task<IDataReader> ExecuteReaderAsync(IDbCommand dbCommand, CancellationToken cancellationToken)
+		public override Task<DbDataReader> ExecuteReaderAsync(DbCommand dbCommand, CancellationToken cancellationToken)
 		{
 			var sqlCommand = CheckIfSqlCommand(dbCommand);
 			var duration = PrepareExecuteReader(dbCommand);
 
-			return Task<IDataReader>
+			return Task<DbDataReader>
 				.Factory
 				.FromAsync(sqlCommand.BeginExecuteReader, sqlCommand.EndExecuteReader, null)
 				.ContinueWith(task =>
 					EndExecuteReader(task, sqlCommand, duration), cancellationToken);
 		}
 
-		private static System.Data.SqlClient.SqlCommand CheckIfSqlCommand(IDbCommand cmd)
+		private static System.Data.SqlClient.SqlCommand CheckIfSqlCommand(DbCommand cmd)
 		{
 			var sqlCommand = cmd as System.Data.SqlClient.SqlCommand;
 
@@ -66,7 +66,7 @@ namespace NHibernate.AdoNet
 			return sqlCommand;
 		}
 
-		private Stopwatch PrepareExecuteReader(IDbCommand cmd)
+		private Stopwatch PrepareExecuteReader(DbCommand cmd)
 		{
 			CheckReaders();
 			LogCommand(cmd);
@@ -79,9 +79,9 @@ namespace NHibernate.AdoNet
 			return duration;
 		}
 
-		private IDataReader EndExecuteReader(Task<IDataReader> task, System.Data.SqlClient.SqlCommand sqlCommand, Stopwatch duration)
+		private DbDataReader EndExecuteReader(Task<DbDataReader> task, System.Data.SqlClient.SqlCommand sqlCommand, Stopwatch duration)
 		{
-			IDataReader reader = null;
+			DbDataReader reader = null;
 			try
 			{
 				reader = task.Result;
@@ -119,7 +119,7 @@ namespace NHibernate.AdoNet
 		public override void AddToBatch(IExpectation expectation)
 		{
 			_totalExpectedRowsAffected += expectation.ExpectedRowCount;
-			IDbCommand batchUpdate = CurrentCommand;
+			DbCommand batchUpdate = CurrentCommand;
 			Driver.AdjustCommand(batchUpdate);
 			string lineWithParameters = null;
 			var sqlStatementLogger = Factory.Settings.SqlStatementLogger;
@@ -145,7 +145,7 @@ namespace NHibernate.AdoNet
 			}
 		}
 
-		protected override void DoExecuteBatch(IDbCommand ps)
+		protected override void DoExecuteBatch(DbCommand ps)
 		{
 			Log.DebugFormat("Executing batch");
 			CheckReaders();

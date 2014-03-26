@@ -8,7 +8,7 @@ using NHibernate.Hql.Ast.ANTLR;
 using NHibernate.Linq.Functions;
 using NHibernate.Type;
 using NUnit.Framework;
-using System.Data;
+using System.Data;using System.Data.Common;
 using NHibernate.Exceptions;
 using SharpTestsEx;
 

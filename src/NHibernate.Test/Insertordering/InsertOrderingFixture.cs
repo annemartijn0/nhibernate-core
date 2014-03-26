@@ -1,7 +1,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Data;
+using System.Data;using System.Data.Common;
 using NHibernate.AdoNet;
 using NHibernate.Cfg;
 using NHibernate.Cfg.Loquacious;
@@ -100,9 +100,9 @@ namespace NHibernate.Test.Insertordering
 				batchSQL = null;
 			}
 
-			public override IDbCommand PrepareBatchCommand(CommandType type, SqlString sql, SqlType[] parameterTypes)
+			public override DbCommand PrepareBatchCommand(CommandType type, SqlString sql, SqlType[] parameterTypes)
 			{
-				IDbCommand result = base.PrepareBatchCommand(type, sql, parameterTypes);
+				DbCommand result = base.PrepareBatchCommand(type, sql, parameterTypes);
 				string sqlstring = sql.ToString();
 				if (batchSQL == null || !sqlstring.Equals(batchSQL))
 				{
@@ -122,7 +122,7 @@ namespace NHibernate.Test.Insertordering
 				base.AddToBatch(expectation);
 			}
 
-			protected override void DoExecuteBatch(IDbCommand ps)
+			protected override void DoExecuteBatch(DbCommand ps)
 			{
 				Console.WriteLine("executing batch [" + batchSQL + "]");
 				Console.WriteLine("--------------------------------------------------------");

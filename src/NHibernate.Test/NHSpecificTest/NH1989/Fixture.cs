@@ -1,4 +1,4 @@
-using System.Data;
+using System.Data;using System.Data.Common;
 
 using NUnit.Framework;
 
@@ -34,7 +34,7 @@ namespace NHibernate.Test.NHSpecificTest.NH1989
 
 		private static void DeleteObjectsOutsideCache(ISession s)
 		{
-			using (IDbCommand cmd = s.Connection.CreateCommand())
+			using (DbCommand cmd = s.Connection.CreateCommand())
 			{
 				cmd.CommandText = "DELETE FROM UserTable";
 				cmd.ExecuteNonQuery();

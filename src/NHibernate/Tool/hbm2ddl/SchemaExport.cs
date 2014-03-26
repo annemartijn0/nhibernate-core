@@ -1,6 +1,6 @@
 using System;
 using System.Collections.Generic;
-using System.Data;
+using System.Data;using System.Data.Common;
 using System.IO;
 
 using NHibernate.AdoNet.Util;
@@ -125,7 +125,7 @@ namespace NHibernate.Tool.hbm2ddl
 		}
 
 		private void Execute(Action<string> scriptAction, bool export, bool throwOnError, TextWriter exportOutput,
-							 IDbCommand statement, string sql)
+							 DbCommand statement, string sql)
 		{
 			Initialize();
 			try
@@ -161,7 +161,7 @@ namespace NHibernate.Tool.hbm2ddl
 			}
 		}
 
-		private void ExecuteSql(IDbCommand cmd, string sql)
+		private void ExecuteSql(DbCommand cmd, string sql)
 		{
 			if (dialect.SupportsSqlBatches)
 			{
@@ -200,7 +200,7 @@ namespace NHibernate.Tool.hbm2ddl
 		/// This overload is provided mainly to enable use of in memory databases. 
 		/// It does NOT close the given connection!
 		/// </remarks>
-		public void Execute(bool script, bool export, bool justDrop, IDbConnection connection,
+		public void Execute(bool script, bool export, bool justDrop, DbConnection connection,
 							TextWriter exportOutput)
 		{
 			if (script)
@@ -213,11 +213,11 @@ namespace NHibernate.Tool.hbm2ddl
 			}
 		}
 
-		public void Execute(Action<string> scriptAction, bool export, bool justDrop, IDbConnection connection,
+		public void Execute(Action<string> scriptAction, bool export, bool justDrop, DbConnection connection,
 							TextWriter exportOutput)
 		{
 			Initialize();
-			IDbCommand statement = null;
+			DbCommand statement = null;
 
 			if (export && connection == null)
 			{
@@ -294,7 +294,7 @@ namespace NHibernate.Tool.hbm2ddl
 		public void Execute(Action<string> scriptAction, bool export, bool justDrop)
 		{
 			Initialize();
-			IDbConnection connection = null;
+			DbConnection connection = null;
 			StreamWriter fileOutput = null;
 			IConnectionProvider connectionProvider = null;
 

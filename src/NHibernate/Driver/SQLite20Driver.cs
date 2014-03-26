@@ -1,5 +1,5 @@
 using System;
-using System.Data;
+using System.Data;using System.Data.Common;
 using System.Data.Common;
 
 namespace NHibernate.Driver
@@ -35,7 +35,7 @@ namespace NHibernate.Driver
 		{
 		}
 
-        public override IDbConnection CreateConnection()
+        public override DbConnection CreateConnection()
         {
             DbConnection connection = (DbConnection)base.CreateConnection();
             connection.StateChange += Connection_StateChange;

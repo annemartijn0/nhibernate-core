@@ -1,6 +1,6 @@
 ﻿using System;
 using System.Collections;
-using System.Data;
+using System.Data;using System.Data.Common;
 using NHibernate.Dialect;
 using NHibernate.Util;
 using NUnit.Framework;

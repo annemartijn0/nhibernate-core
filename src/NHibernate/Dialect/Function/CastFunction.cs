@@ -1,6 +1,6 @@
 using System;
 using System.Collections;
-using System.Data;
+using System.Data;using System.Data.Common;
 using System.Xml;
 using NHibernate.Engine;
 using NHibernate.SqlCommand;
