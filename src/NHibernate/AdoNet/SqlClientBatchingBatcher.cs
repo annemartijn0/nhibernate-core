@@ -1,8 +1,12 @@
 using System;
 using System.Data;
 using System.Data.Common;
+using System.Diagnostics;
 using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
 using NHibernate.AdoNet.Util;
+using NHibernate.Driver;
 using NHibernate.Exceptions;
 using NHibernate.Util;
 
@@ -28,6 +32,77 @@ namespace NHibernate.AdoNet
 			//behind an if(log.IsDebugEnabled) will cause a null reference exception 
 			//at that point.
 			_currentBatchCommandsLog = new StringBuilder().AppendLine("Batch commands:");
+		}
+
+		/// <summary>
+		/// Asynchronously gets an <see cref="IDataReader"/> by calling ExecuteReaderAsync on the <see cref="IDbCommand"/>.
+		/// </summary>
+		/// <param name="dbCommand">The <see cref="IDbCommand"/> to execute to get the <see cref="IDataReader"/>. Should be of type <see cref="System.Data.SqlClient.SqlCommand"/></param>
+		/// <param name="cancellationToken">The <see cref="CancellationToken"/> propagates notification that operations should be canceled.</param>
+		/// <returns>The <see cref="IDataReader"/> from the <see cref="IDbCommand"/>.</returns>
+		/// <remarks>
+		/// The Batcher is responsible for ensuring that all of the Drivers rules for how many open
+		/// <see cref="IDataReader"/>s it can have are followed.
+		/// </remarks>
+		public override Task<IDataReader> ExecuteReaderAsync(IDbCommand dbCommand, CancellationToken cancellationToken)
+		{
+			var sqlCommand = CheckIfSqlCommand(dbCommand);
+			var duration = PrepareExecuteReader(dbCommand);
+
+			return Task<IDataReader>
+				.Factory
+				.FromAsync(sqlCommand.BeginExecuteReader, sqlCommand.EndExecuteReader, null)
+				.ContinueWith(task =>
+					EndExecuteReader(task, sqlCommand, duration), cancellationToken);
+		}
+
+		private static System.Data.SqlClient.SqlCommand CheckIfSqlCommand(IDbCommand cmd)
+		{
+			var sqlCommand = cmd as System.Data.SqlClient.SqlCommand;
+
+			if (cmd == null)
+				throw new NotSupportedException("DbCommand Should have been a SqlCommand");
+
+			return sqlCommand;
+		}
+
+		private Stopwatch PrepareExecuteReader(IDbCommand cmd)
+		{
+			CheckReaders();
+			LogCommand(cmd);
+			Prepare(cmd);
+
+			Stopwatch duration = null;
+			if (Log.IsDebugEnabled)
+				duration = Stopwatch.StartNew();
+
+			return duration;
+		}
+
+		private IDataReader EndExecuteReader(Task<IDataReader> task, System.Data.SqlClient.SqlCommand sqlCommand, Stopwatch duration)
+		{
+			IDataReader reader = null;
+			try
+			{
+				reader = task.Result;
+			}
+			finally
+			{
+				if (Log.IsDebugEnabled && duration != null && reader != null)
+				{
+					Log.DebugFormat("ExecuteReader took {0} ms", duration.ElapsedMilliseconds);
+					_readersDuration[reader] = duration;
+				}
+			}
+
+			if (!_factory.ConnectionProvider.Driver.SupportsMultipleOpenReaders)
+			{
+				reader = new NHybridDataReader(reader);
+			}
+
+			_readersToClose.Add(reader);
+			LogOpenReader();
+			return reader;
 		}
 
 		public override int BatchSize

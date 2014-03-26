@@ -25,7 +25,7 @@ namespace NHibernate.AdoNet
 		private static int _openReaderCount;
 
 		private readonly ConnectionManager _connectionManager;
-		private readonly ISessionFactoryImplementor _factory;
+		protected readonly ISessionFactoryImplementor _factory;
 		private readonly IInterceptor _interceptor;
 
 		// batchCommand used to be called batchUpdate - that name to me implied that updates
@@ -35,8 +35,8 @@ namespace NHibernate.AdoNet
 		private SqlString _batchCommandSql;
 		private SqlType[] _batchCommandParameterTypes;
 		private readonly HashSet<IDbCommand> _commandsToClose = new HashSet<IDbCommand>();
-		private readonly HashSet<IDataReader> _readersToClose = new HashSet<IDataReader>();
-		private readonly IDictionary<IDataReader, Stopwatch> _readersDuration = new Dictionary<IDataReader, Stopwatch>();
+		protected readonly HashSet<IDataReader> _readersToClose = new HashSet<IDataReader>();
+		protected readonly IDictionary<IDataReader, Stopwatch> _readersDuration = new Dictionary<IDataReader, Stopwatch>();
 		private IDbCommand _lastQuery;
 		private bool _releasing;
 
@@ -273,63 +273,9 @@ namespace NHibernate.AdoNet
 		/// </remarks>
 		public virtual Task<IDataReader> ExecuteReaderAsync(IDbCommand dbCommand, CancellationToken cancellationToken)
 		{
-			var sqlCommand = CheckIfSqlCommand(dbCommand);
-			var duration = PrepareExecuteReader(dbCommand);
-
-			return Task<IDataReader>
-				.Factory
-				.FromAsync(sqlCommand.BeginExecuteReader, sqlCommand.EndExecuteReader, null)
-				.ContinueWith(task =>
-					EndExecuteReader(task, sqlCommand, duration), cancellationToken);
-		}
-
-		private static System.Data.SqlClient.SqlCommand CheckIfSqlCommand(IDbCommand cmd)
-		{
-			var sqlCommand = cmd as System.Data.SqlClient.SqlCommand;
-
-			if (cmd == null)
-				throw new NotSupportedException("asynchronous reading is MSSQL only");
-
-			return sqlCommand;
-		}
-
-		private Stopwatch PrepareExecuteReader(IDbCommand cmd)
-		{
-			CheckReaders();
-			LogCommand(cmd);
-			Prepare(cmd);
-
-			Stopwatch duration = null;
-			if (Log.IsDebugEnabled)
-				duration = Stopwatch.StartNew();
-
-			return duration;
-		}
-
-		private IDataReader EndExecuteReader(Task<IDataReader> task, System.Data.SqlClient.SqlCommand sqlCommand, Stopwatch duration)
-		{
-			IDataReader reader = null;
-			try
-			{
-				reader = task.Result;
-			}
-			finally
-			{
-				if (Log.IsDebugEnabled && duration != null && reader != null)
-				{
-					Log.DebugFormat("ExecuteReader took {0} ms", duration.ElapsedMilliseconds);
-					_readersDuration[reader] = duration;
-				}
-			}
-
-			if (!_factory.ConnectionProvider.Driver.SupportsMultipleOpenReaders)
-			{
-				reader = new NHybridDataReader(reader);
-			}
-
-			_readersToClose.Add(reader);
-			LogOpenReader();
-			return reader;
+			var taskCompletionSource = new TaskCompletionSource<IDataReader>();
+			taskCompletionSource.SetResult(ExecuteReader(dbCommand));
+			return taskCompletionSource.Task;
 		}
 
 		/// <summary>
@@ -580,7 +526,7 @@ namespace NHibernate.AdoNet
 			}
 		}
 
-		private static void LogOpenReader()
+		protected static void LogOpenReader()
 		{
 			if (Log.IsDebugEnabled)
 			{
