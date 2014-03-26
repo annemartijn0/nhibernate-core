@@ -278,10 +278,13 @@ namespace NHibernate.Loader
 
 			return DoQueryAsync(session, queryParameters, returnProxies)
 				.ContinueWith(task =>
-					EndDoQueryAndInitializeNonLazyCollectionsAsync(task, persistenceContext, defaultReadOnlyOrig));
+				{
+					EndDoQueryAndInitializeNonLazyCollectionsAsync(persistenceContext, defaultReadOnlyOrig);
+					return task.Result;
+				});
 		}
 
-		private IList EndDoQueryAndInitializeNonLazyCollectionsAsync(Task<IList> task, IPersistenceContext persistenceContext, bool defaultReadOnlyOrig)
+		private static void EndDoQueryAndInitializeNonLazyCollectionsAsync(IPersistenceContext persistenceContext, bool defaultReadOnlyOrig)
 		{
 			try
 			{
@@ -293,8 +296,6 @@ namespace NHibernate.Loader
 
 				persistenceContext.DefaultReadOnly = defaultReadOnlyOrig;
 			}
-
-			return task.Result;
 		}
 
 		/// <summary>
@@ -528,10 +529,6 @@ namespace NHibernate.Loader
 			{
 				e.Data["actual-sql-query"] = st.CommandText;
 				throw;
-			}
-			finally
-			{
-				session.Batcher.CloseCommand(st, rs);
 			}
 
 			InitializeEntitiesAndCollections(hydratedObjects, rs, session, queryParameters.IsReadOnly(session));
@@ -1300,8 +1297,8 @@ namespace NHibernate.Loader
 
 			return session.Batcher
 				.ExecuteReaderAsync(dbCommand)
-				.ContinueWith(taskResult =>
-					EndGetResultSet(taskResult, dbCommand, session, selection, autoDiscoverTypes));
+				.ContinueWith(task =>
+					EndGetResultSet(task, dbCommand, session, selection, autoDiscoverTypes));
 		}
 
 		private IDataReader EndGetResultSet(Task<IDataReader> task, IDbCommand dbCommand, ISessionImplementor session, RowSelection selection, bool autoDiscoverTypes)
@@ -1578,6 +1575,29 @@ namespace NHibernate.Loader
 			return ListIgnoreQueryCache(session, queryParameters);
 		}
 
+		private IList ListIgnoreQueryCache(ISessionImplementor session, QueryParameters queryParameters)
+		{
+			return GetResultList(DoList(session, queryParameters), queryParameters.ResultTransformer);
+		}
+
+		private IList ListUsingQueryCache(ISessionImplementor session, QueryParameters queryParameters, ISet<string> querySpaces, IType[] resultTypes)
+		{
+			IQueryCache queryCache = _factory.GetQueryCache(queryParameters.CacheRegion);
+
+			ISet<FilterKey> filterKeys = FilterKey.CreateFilterKeys(session.EnabledFilters, session.EntityMode);
+			QueryKey key = new QueryKey(Factory, SqlString, queryParameters, filterKeys);
+
+			IList result = GetResultFromQueryCache(session, queryParameters, querySpaces, resultTypes, queryCache, key);
+
+			if (result == null)
+			{
+				result = DoList(session, queryParameters);
+				PutResultInQueryCache(session, queryParameters, resultTypes, queryCache, key, result);
+			}
+
+			return GetResultList(result, queryParameters.ResultTransformer);
+		}
+
 		/// <summary>
 		/// Return the query results asynchronously, using the query cache, called
 		/// by subclasses that implement cacheable queries
@@ -1599,32 +1619,9 @@ namespace NHibernate.Loader
 			return ListIgnoreQueryCacheAsync(session, queryParameters);
 		}
 
-		private IList ListIgnoreQueryCache(ISessionImplementor session, QueryParameters queryParameters)
-		{
-			return GetResultList(DoList(session, queryParameters), queryParameters.ResultTransformer);
-		}
-
 		private Task<IList> ListIgnoreQueryCacheAsync(ISessionImplementor session, QueryParameters queryParameters)
 		{
 			return DoListAsync(session, queryParameters);
-		}
-
-		private IList ListUsingQueryCache(ISessionImplementor session, QueryParameters queryParameters, ISet<string> querySpaces, IType[] resultTypes)
-		{
-			IQueryCache queryCache = _factory.GetQueryCache(queryParameters.CacheRegion);
-
-			ISet<FilterKey> filterKeys = FilterKey.CreateFilterKeys(session.EnabledFilters, session.EntityMode);
-			QueryKey key = new QueryKey(Factory, SqlString, queryParameters, filterKeys);
-
-			IList result = GetResultFromQueryCache(session, queryParameters, querySpaces, resultTypes, queryCache, key);
-
-			if (result == null)
-			{
-				result = DoList(session, queryParameters);
-				PutResultInQueryCache(session, queryParameters, resultTypes, queryCache, key, result);
-			}
-
-			return GetResultList(result, queryParameters.ResultTransformer);
 		}
 
 		private Task<IList> ListUsingQueryCacheAsync(ISessionImplementor session, QueryParameters queryParameters, ISet<string> querySpaces, IType[] resultTypes)
@@ -1635,16 +1632,17 @@ namespace NHibernate.Loader
 			QueryKey key = new QueryKey(Factory, SqlString, queryParameters, filterKeys);
 
 			var taskCompletionSource = new TaskCompletionSource<IList>();
-			var result = GetResultFromQueryCache(session, queryParameters, querySpaces, resultTypes, queryCache, key);
+			IList result = GetResultFromQueryCache(session, queryParameters, querySpaces, resultTypes, queryCache, key);
 
 			if (IsResultNullOrNotSetToTaskCompletionSource(result, taskCompletionSource))
 			{
-				var doListAsyncTask = DoListAsync(session, queryParameters);
-
-				doListAsyncTask.ContinueWith(task =>
-					PutResultInQueryCache(session, queryParameters, resultTypes, queryCache, key, task.Result));
-
-				return doListAsyncTask;
+				return DoListAsync(session, queryParameters)
+					.ContinueWith(task =>
+					{
+						result = task.Result;
+						PutResultInQueryCache(session, queryParameters, resultTypes, queryCache, key, result);
+						return result;
+					});
 			}
 
 			return taskCompletionSource.Task;
@@ -1717,7 +1715,7 @@ namespace NHibernate.Loader
 		protected IList DoList(ISessionImplementor session, QueryParameters queryParameters)
 		{
 			bool statsEnabled = Factory.Statistics.IsStatisticsEnabled;
-			var stopWatch = StopWatch(statsEnabled);
+			var stopWatch = StartStopWatchQueryExecuted(statsEnabled);
 
 			IList result;
 			try
@@ -1751,14 +1749,14 @@ namespace NHibernate.Loader
 		protected Task<IList> DoListAsync(ISessionImplementor session, QueryParameters queryParameters)
 		{
 			bool statsEnabled = Factory.Statistics.IsStatisticsEnabled;
-			var stopWatch = StopWatch(statsEnabled);
+			var stopWatch = StartStopWatchQueryExecuted(statsEnabled);
 
 			return DoQueryAndInitializeNonLazyCollectionsAsync(session, queryParameters, true)
 				.ContinueWith(task =>
 					EndDoList(statsEnabled, stopWatch, task, queryParameters));
 		}
 
-		private static Stopwatch StopWatch(bool statsEnabled)
+		private static Stopwatch StartStopWatchQueryExecuted(bool statsEnabled)
 		{
 			var stopWatch = new Stopwatch();
 			if (statsEnabled)

@@ -1961,7 +1961,7 @@ namespace NHibernate.Impl
 			}
 		}
 
-		private void EndListAsync(IList results, Task<IList>[] tasks)
+		private void EndListAsync(IList results, IEnumerable<Task<IList>> tasks)
 		{
 			bool success = false;
 

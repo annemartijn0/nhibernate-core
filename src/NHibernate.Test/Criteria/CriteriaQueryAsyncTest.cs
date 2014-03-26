@@ -47,11 +47,15 @@ namespace NHibernate.Test.Criteria
 			using (ISession session = OpenSession())
 			{
 				// Act
-				var result = session.CreateCriteria<Student>()
-					.ListAsync<Student>().Result;
+				session.CreateCriteria<Student>()
+					.ListAsync<Student>()
+					.ContinueWith(task =>
+					{
+						var result = task.Result;
 
-				// Assert
-				Assert.AreEqual(result.Count, 5);
+						// Assert
+						Assert.AreEqual(result.Count, 5);
+					});
 			}
 
 			using (ISession session = OpenSession())
@@ -82,7 +86,6 @@ namespace NHibernate.Test.Criteria
 			}
 
 			using (ISession session = OpenSession())
-			using (ITransaction t = session.BeginTransaction())
 			{
 				// Act
 				for (int i = 0; i < numberOfTasks; i++)
@@ -92,14 +95,15 @@ namespace NHibernate.Test.Criteria
 					tasks[i] = task;
 				}
 
-				// Assert: No Exceptions
-				// Assert: all tasks return all students
-				foreach (var task in tasks)
+				Task.Factory.ContinueWhenAll(tasks, finishedTasks =>
 				{
-					Assert.AreEqual(task.Result.Count, 5);
-				}
-
-				t.Commit();
+					// Assert: No Exceptions
+					// Assert: all tasks return all students
+					foreach (var task in finishedTasks)
+					{
+						Assert.AreEqual(task.Result.Count, 5);
+					}
+				}).Wait();
 			}
 
 			using (ISession session = OpenSession())
@@ -113,6 +117,7 @@ namespace NHibernate.Test.Criteria
 		[Test]
 		public void SubqueryPaginationOnlyWithFirstAsync()
 		{
+			// Arrange
 			using (ISession session = OpenSession())
 			using (ITransaction t = session.BeginTransaction())
 			{
@@ -126,20 +131,25 @@ namespace NHibernate.Test.Criteria
 			}
 
 			using (ISession session = OpenSession())
-			using (ITransaction t = session.BeginTransaction())
 			{
+				
 				DetachedCriteria dc = DetachedCriteria.For(typeof(Student))
 					.Add(Property.ForName("StudentNumber").Gt(0L))
 					.SetFirstResult(1)
 					.AddOrder(Order.Asc("StudentNumber"))
 					.SetProjection(Property.ForName("Name"));
 
-				var result = session.CreateCriteria(typeof(Student))
+				// Act
+				session.CreateCriteria(typeof(Student))
 					.Add(Subqueries.PropertyIn("Name", dc))
-					.ListAsync<Student>().Result;
+					.ListAsync<Student>()
+					.ContinueWith(task =>
+					{
+						var result = task.Result;
 
-				Assert.That(result.Count, Is.EqualTo(3));
-				t.Commit();
+						// Assert
+						Assert.That(result.Count, Is.EqualTo(3));
+					}).Wait();
 			}
 
 			using (ISession session = OpenSession())
@@ -166,7 +176,6 @@ namespace NHibernate.Test.Criteria
 			}
 
 			using (ISession session = OpenSession())
-			using (ITransaction t = session.BeginTransaction())
 			{
 				DetachedCriteria dc = DetachedCriteria.For(typeof(Student))
 					.Add(Property.ForName("StudentNumber").Gt(200L))
@@ -175,16 +184,19 @@ namespace NHibernate.Test.Criteria
 					.AddOrder(Order.Asc("StudentNumber"))
 					.SetProjection(Property.ForName("Name"));
 
-				var result = session.CreateCriteria(typeof(Student))
+				session.CreateCriteria(typeof(Student))
 					.Add(Subqueries.PropertyIn("Name", dc))
 					.AddOrder(Order.Asc("StudentNumber"))
-					.ListAsync<Student>().Result;
+					.ListAsync<Student>()
+					.ContinueWith(task =>
+					{
+						var result = task.Result;
 
-				Assert.That(result.Count, Is.EqualTo(2));
-				Assert.That(result[0].StudentNumber, Is.EqualTo(456));
-				Assert.That(result[1].StudentNumber, Is.EqualTo(999));
-
-				t.Commit();
+						// Assert
+						Assert.That(result.Count, Is.EqualTo(2));
+						Assert.That(result[0].StudentNumber, Is.EqualTo(456));
+						Assert.That(result[1].StudentNumber, Is.EqualTo(999));
+					}).Wait();
 			}
 
 			using (ISession session = OpenSession())
@@ -211,18 +223,21 @@ namespace NHibernate.Test.Criteria
 			}
 
 			using (ISession session = OpenSession())
-			using (ITransaction t = session.BeginTransaction())
 			{
-				var result = session.CreateCriteria<Student>()
+				session.CreateCriteria<Student>()
 					.Add(Restrictions.Gt("StudentNumber", 0L))
 					.AddOrder(Order.Asc("StudentNumber"))
 					.SetFirstResult(1).SetMaxResults(2)
-					.ListAsync<Student>().Result;
-				Assert.That(result.Count, Is.EqualTo(2));
-				Assert.That(result[0].StudentNumber, Is.EqualTo(232));
-				Assert.That(result[1].StudentNumber, Is.EqualTo(456));
+					.ListAsync<Student>()
+					.ContinueWith(task =>
+					{
+						var result = task.Result;
 
-				t.Commit();
+						// Assert
+						Assert.That(result.Count, Is.EqualTo(2));
+						Assert.That(result[0].StudentNumber, Is.EqualTo(232));
+						Assert.That(result[1].StudentNumber, Is.EqualTo(456));
+					}).Wait();
 			}
 
 			using (ISession session = OpenSession())
@@ -249,20 +264,22 @@ namespace NHibernate.Test.Criteria
 			}
 
 			using (ISession session = OpenSession())
-			using (ITransaction t = session.BeginTransaction())
 			{
-				var result = session.CreateCriteria<Student>()
+				session.CreateCriteria<Student>()
 					.Add(Restrictions.Gt("StudentNumber", 0L))
 					.AddOrder(Order.Asc("StudentNumber"))
 					.SetFirstResult(1)
-					.ListAsync<Student>().Result;
+					.ListAsync<Student>()
+					.ContinueWith(task =>
+					{
+						var result = task.Result;
 
-				Assert.That(result.Count, Is.EqualTo(3));
-				Assert.That(result[0].StudentNumber, Is.EqualTo(232));
-				Assert.That(result[1].StudentNumber, Is.EqualTo(456));
-				Assert.That(result[2].StudentNumber, Is.EqualTo(999));
-
-				t.Commit();
+						// Assert
+						Assert.That(result.Count, Is.EqualTo(3));
+						Assert.That(result[0].StudentNumber, Is.EqualTo(232));
+						Assert.That(result[1].StudentNumber, Is.EqualTo(456));
+						Assert.That(result[2].StudentNumber, Is.EqualTo(999));
+					}).Wait();
 			}
 
 			using (ISession session = OpenSession())
