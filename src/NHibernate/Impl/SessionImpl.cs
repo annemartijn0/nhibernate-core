@@ -1922,46 +1922,44 @@ namespace NHibernate.Impl
 
 		public override Task ListAsync(CriteriaImpl criteria, IList results)
 		{
-			using (new SessionIdLoggingContext(SessionId))
+			var sessionIdLoggingContext = new SessionIdLoggingContext(SessionId);
+			CheckAndUpdateSessionStatus();
+
+			string[] implementors = Factory.GetImplementors(criteria.EntityOrClassName);
+			int size = implementors.Length;
+
+			CriteriaLoader[] loaders = new CriteriaLoader[size];
+			ISet<string> spaces = new HashSet<string>();
+
+			for (int i = 0; i < size; i++)
 			{
-				CheckAndUpdateSessionStatus();
+				loaders[i] = new CriteriaLoader(
+					GetOuterJoinLoadable(implementors[i]),
+					Factory,
+					criteria,
+					implementors[i],
+					enabledFilters
+					);
 
-				string[] implementors = Factory.GetImplementors(criteria.EntityOrClassName);
-				int size = implementors.Length;
-
-				CriteriaLoader[] loaders = new CriteriaLoader[size];
-				ISet<string> spaces = new HashSet<string>();
-
-				for (int i = 0; i < size; i++)
-				{
-					loaders[i] = new CriteriaLoader(
-						GetOuterJoinLoadable(implementors[i]),
-						Factory,
-						criteria,
-						implementors[i],
-						enabledFilters
-						);
-
-					spaces.UnionWith(loaders[i].QuerySpaces);
-				}
-
-				AutoFlushIfRequired(spaces);
-
-				dontFlushFromFind++;
-
-				var listAsyncTasks = new List<Task<IList>>();
-				for (int i = size - 1; i >= 0; i--)
-				{
-					listAsyncTasks.Add(loaders[i].ListAsync(this));
-				}
-
-				return Task.Factory
-					.ContinueWhenAll(listAsyncTasks.ToArray(), tasks => 
-						EndListAsync(results, tasks));
+				spaces.UnionWith(loaders[i].QuerySpaces);
 			}
+
+			AutoFlushIfRequired(spaces);
+
+			dontFlushFromFind++;
+
+			var asyncTasks = new Task<IList>[size];
+			for (int i = size - 1; i >= 0; i--)
+			{
+				asyncTasks[i] = (loaders[i].ListAsync(this));
+			}
+
+			return Task.Factory
+				.ContinueWhenAll(asyncTasks, tasks =>
+					EndListAsync(results, tasks, sessionIdLoggingContext));
 		}
 
-		private void EndListAsync(IList results, IEnumerable<Task<IList>> tasks)
+		private void EndListAsync(IList results, IEnumerable<Task<IList>> tasks, SessionIdLoggingContext sessionIdLoggingContext)
 		{
 			bool success = false;
 
@@ -1973,6 +1971,7 @@ namespace NHibernate.Impl
 				}
 
 				success = true;
+				sessionIdLoggingContext.Dispose();
 			}
 			catch (AggregateException aggregateException)
 			{
