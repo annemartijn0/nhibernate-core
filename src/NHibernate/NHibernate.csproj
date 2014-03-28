@@ -89,6 +89,11 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="ADOException.cs" />
+    <Compile Include="AdoNet\AsyncExtensions\AsyncHandler\ExecuteReaderAsyncHandler.cs" />
+    <Compile Include="AdoNet\AsyncExtensions\AsyncHandler\IHandler.cs" />
+    <Compile Include="AdoNet\AsyncExtensions\AsyncHandler\DbClientExecuteReaderAsyncHandler.cs" />
+    <Compile Include="AdoNet\AsyncExtensions\AsyncHandler\SqlClientExecuteReaderAsyncHandler.cs" />
+    <Compile Include="AdoNet\AsyncExtensions\DbCommandExtensions.cs" />
     <Compile Include="AdoNet\MySqlClientBatchingBatcher.cs" />
     <Compile Include="AdoNet\MySqlClientBatchingBatcherFactory.cs" />
     <Compile Include="AdoNet\MySqlClientSqlCommandSet.cs" />

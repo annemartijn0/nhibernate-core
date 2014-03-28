@@ -107,6 +107,8 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Ado\AlmostSimple.cs" />
+    <Compile Include="Ado\AsyncExtensions\AsyncHandler\ExecuteReaderAsyncHandlerFixture.cs" />
+    <Compile Include="Ado\AsyncExtensions\DbCommandExtensionsFixture.cs" />
     <Compile Include="Ado\BatcherFixture.cs" />
     <Compile Include="Ado\VerySimple.cs" />
     <Compile Include="Any\Address.cs" />
