@@ -273,7 +273,7 @@ namespace NHibernate.AdoNet
 		/// The Batcher is responsible for ensuring that all of the Drivers rules for how many open
 		/// <see cref="IDataReader"/>s it can have are followed.
 		/// </remarks>
-		public virtual Task<DbDataReader> ExecuteReaderAsync(DbCommand dbCommand, CancellationToken cancellationToken)
+		public Task<DbDataReader> ExecuteReaderAsync(DbCommand dbCommand, CancellationToken cancellationToken)
 		{
 			var stopwatch = PrepareExecuteReader(dbCommand);
 
