@@ -29,7 +29,14 @@ namespace NHibernate.AdoNet.AsyncExtensions
             if (cancellationToken.IsCancellationRequested)
                 return CreatedTaskWithCancellation();
 
-	        return ExecuteReaderAsyncHandler.FirstOfChain.Handle(dbCommand);
+	        try
+	        {
+		        return ExecuteReaderAsyncHandler.FirstOfChain.Handle(dbCommand);
+	        }
+			catch (Exception e)
+			{
+				return CreatedTaskWithException(e);
+			}
         }
 
         private static Task<DbDataReader> CreatedTaskWithCancellation()
@@ -38,5 +45,12 @@ namespace NHibernate.AdoNet.AsyncExtensions
             taskCompletionSource.SetCanceled();
             return taskCompletionSource.Task;
         }
+
+		private static Task<DbDataReader> CreatedTaskWithException(Exception e)
+		{
+			var taskCompletionSource = new TaskCompletionSource<DbDataReader>();
+			taskCompletionSource.SetException(e);
+			return taskCompletionSource.Task;
+		}
     }
 }
