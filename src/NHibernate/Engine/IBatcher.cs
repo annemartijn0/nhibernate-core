@@ -123,17 +123,6 @@ namespace NHibernate.Engine
 		DbDataReader ExecuteReader(DbCommand cmd);
 
 		/// <summary>
-		/// Asynchronously gets an <see cref="Task{DbDataReader}"/> by calling ExecuteReaderAsync on the <see cref="DbCommand"/>.
-		/// </summary>
-		/// <param name="cmd">The <see cref="DbCommand"/> to execute to get the <see cref="DbDataReader"/>.</param>
-		/// <returns>The <see cref="DbDataReader"/> from the <see cref="DbCommand"/>.</returns>
-		/// <remarks>
-		/// The Batcher is responsible for ensuring that all of the Drivers rules for how many open
-		/// <see cref="DbDataReader"/>s it can have are followed.
-		/// </remarks>
-		Task<DbDataReader> ExecuteReaderAsync(DbCommand cmd);
-
-		/// <summary>
 		/// Asynchronously gets an <see cref="DbDataReader"/> by calling ExecuteReaderAsync on the <see cref="DbCommand"/>.
 		/// </summary>
 		/// <param name="dbCommand">The <see cref="DbCommand"/> to execute to get the <see cref="DbDataReader"/>. Should be of type <see cref="System.Data.SqlClient.SqlCommand"/></param>

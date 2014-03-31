@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Threading;
 using System.Threading.Tasks;
 using NHibernate.Criterion;
 using NHibernate.SqlCommand;
@@ -361,6 +362,13 @@ namespace NHibernate
 		Task ListAsync(IList results);
 
 		/// <summary>
+		/// Asynchronously get the results and fill the <see cref="IList"/>
+		/// </summary>
+		/// <param name="results">The list to fill with the results.</param>
+		/// <param name="cancellationToken">Token to cancel the request.</param>
+		Task ListAsync(IList results, CancellationToken cancellationToken);
+
+		/// <summary>
 		/// Strongly-typed version of <see cref="List()" />.
 		/// </summary>
 		IList<T> List<T>();
@@ -369,6 +377,12 @@ namespace NHibernate
 		/// Asynchronous version of <see cref="List{T}()" />.
 		/// </summary>
 		Task<IList<T>> ListAsync<T>();
+
+		/// <summary>
+		/// Asynchronous version of <see cref="List{T}()" />.
+		/// </summary>
+		/// <param name="cancellationToken">Token to cancel the request.</param>
+		Task<IList<T>> ListAsync<T>(CancellationToken cancellationToken);
 
 		/// <summary>
 		/// Strongly-typed version of <see cref="UniqueResult()" />.

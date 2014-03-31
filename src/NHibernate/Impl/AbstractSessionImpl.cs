@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Data;using System.Data.Common;
 using NHibernate.AdoNet;
@@ -150,7 +151,7 @@ namespace NHibernate.Impl
 
 		public abstract void List(CriteriaImpl criteria, IList results);
 
-		public abstract Task ListAsync(CriteriaImpl criteria, IList results);
+		public abstract Task ListAsync(CriteriaImpl criteria, IList results, CancellationToken cancellationToken);
 
 		public virtual IList List(CriteriaImpl criteria)
 		{

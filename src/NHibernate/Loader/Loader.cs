@@ -1,10 +1,12 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Data;using System.Data.Common;
+using System.Data;
+using System.Data.Common;
 using System.Diagnostics;
 using System.Linq;
 using System.Runtime.CompilerServices;
+using System.Threading;
 using System.Threading.Tasks;
 using NHibernate.AdoNet;
 using NHibernate.Cache;
@@ -264,7 +266,7 @@ namespace NHibernate.Loader
 		/// persister from each row of the <c>DataReader</c>. If an object is supplied, will attempt to
 		/// initialize that object. If a collection is supplied, attempt to initialize that collection.
 		/// </summary>
-		private Task<IList> DoQueryAndInitializeNonLazyCollectionsAsync(ISessionImplementor session, QueryParameters queryParameters, bool returnProxies)
+		private Task<IList> DoQueryAndInitializeNonLazyCollectionsAsync(ISessionImplementor session, CancellationToken cancellationToken, QueryParameters queryParameters, bool returnProxies)
 		{
 			IPersistenceContext persistenceContext = session.PersistenceContext;
 			bool defaultReadOnlyOrig = persistenceContext.DefaultReadOnly;
@@ -276,12 +278,30 @@ namespace NHibernate.Loader
 
 			persistenceContext.BeforeLoad();
 
-			return DoQueryAsync(session, queryParameters, returnProxies)
-				.ContinueWith(task =>
+			var task = DoQueryAsync(session, cancellationToken, queryParameters, returnProxies);
+			if (task.IsCanceled)
+			{
+				EndDoQueryAndInitializeNonLazyCollectionsAsync(persistenceContext, defaultReadOnlyOrig);
+				return CanceledIListTask();
+			}
+			return task.ContinueWith(_ =>
 				{
-					EndDoQueryAndInitializeNonLazyCollectionsAsync(persistenceContext, defaultReadOnlyOrig);
-					return task.Result;
+					try
+					{
+						return task.Result;
+					}
+					finally
+					{
+						EndDoQueryAndInitializeNonLazyCollectionsAsync(persistenceContext, defaultReadOnlyOrig);
+					}
 				});
+		}
+
+		private static Task<IList> CanceledIListTask()
+		{
+			var taskCompletionSource = new TaskCompletionSource<IList>();
+			taskCompletionSource.SetCanceled();
+			return taskCompletionSource.Task;
 		}
 
 		private static void EndDoQueryAndInitializeNonLazyCollectionsAsync(IPersistenceContext persistenceContext, bool defaultReadOnlyOrig)
@@ -457,11 +477,11 @@ namespace NHibernate.Loader
 				DbDataReader rs = GetResultSet(st, queryParameters.HasAutoDiscoverScalarTypes, queryParameters.Callable, selection,
 											  session);
 
-				return Results(session, queryParameters, returnProxies, rs, entitySpan, maxRows, hydratedObjects, st);
+				return Results(session, CancellationToken.None, queryParameters, returnProxies, rs, entitySpan, maxRows, hydratedObjects, st);
 			}
 		}
 
-		private Task<IList> DoQueryAsync(ISessionImplementor session, QueryParameters queryParameters, bool returnProxies)
+		private Task<IList> DoQueryAsync(ISessionImplementor session, CancellationToken cancellationToken, QueryParameters queryParameters, bool returnProxies)
 		{
 			using (new SessionIdLoggingContext(session.SessionId))
 			{
@@ -474,14 +494,13 @@ namespace NHibernate.Loader
 
 				DbCommand st = PrepareQueryCommand(queryParameters, false, session);
 
-				return GetResultSetAsync(st, queryParameters.HasAutoDiscoverScalarTypes, queryParameters.Callable, selection, session)
+				return GetResultSetAsync(st, cancellationToken, queryParameters.HasAutoDiscoverScalarTypes, queryParameters.Callable, selection, session)
 					.ContinueWith(task =>
-						Results(session, queryParameters, returnProxies, task.Result, entitySpan, maxRows, hydratedObjects, st));
+						Results(session, cancellationToken, queryParameters, returnProxies, task.Result, entitySpan, maxRows, hydratedObjects, st), cancellationToken);
 			}
 		}
 
-		private IList Results(ISessionImplementor session, QueryParameters queryParameters, bool returnProxies, DbDataReader rs,
-			int entitySpan, int maxRows, List<object> hydratedObjects, DbCommand st)
+		private IList Results(ISessionImplementor session, CancellationToken cancellationToken, QueryParameters queryParameters, bool returnProxies, DbDataReader rs, int entitySpan, int maxRows, List<object> hydratedObjects, DbCommand st)
 		{
 			LockMode[] lockModeArray = GetLockModes(queryParameters.LockModes);
 			EntityKey optionalObjectKey = GetOptionalObjectKey(queryParameters, session);
@@ -503,6 +522,8 @@ namespace NHibernate.Loader
 				int count;
 				for (count = 0; count < maxRows && rs.Read(); count++)
 				{
+					cancellationToken.ThrowIfCancellationRequested();
+
 					if (Log.IsDebugEnabled)
 					{
 						Log.Debug("result set row: " + count);
@@ -531,8 +552,8 @@ namespace NHibernate.Loader
 				throw;
 			}
 			finally
- 			{
- 				session.Batcher.CloseCommand(st, rs);
+			{
+				session.Batcher.CloseCommand(st, rs);
 			}
 
 			InitializeEntitiesAndCollections(hydratedObjects, rs, session, queryParameters.IsReadOnly(session));
@@ -1295,14 +1316,14 @@ namespace NHibernate.Loader
 		/// <param name="session">The <see cref="ISession" /> to load in.</param>
 		/// <param name="callable"></param>
 		/// <returns>An IDataReader advanced to the first record in RowSelection.</returns>
-		protected Task<DbDataReader> GetResultSetAsync(DbCommand dbCommand, bool autoDiscoverTypes, bool callable, RowSelection selection, ISessionImplementor session)
+		protected Task<DbDataReader> GetResultSetAsync(DbCommand dbCommand, CancellationToken cancellationToken, bool autoDiscoverTypes, bool callable, RowSelection selection, ISessionImplementor session)
 		{
 			Log.Info(dbCommand.CommandText);
 
 			return session.Batcher
-				.ExecuteReaderAsync(dbCommand)
+				.ExecuteReaderAsync(dbCommand, cancellationToken)
 				.ContinueWith(task =>
-					EndGetResultSet(task, dbCommand, session, selection, autoDiscoverTypes));
+					EndGetResultSet(task, dbCommand, session, selection, autoDiscoverTypes), cancellationToken);
 		}
 
 		private DbDataReader EndGetResultSet(Task<DbDataReader> task, DbCommand dbCommand, ISessionImplementor session, RowSelection selection, bool autoDiscoverTypes)
@@ -1612,24 +1633,24 @@ namespace NHibernate.Loader
 		/// <param name="querySpaces"></param>
 		/// <param name="resultTypes"></param>
 		/// <returns></returns>
-		protected Task<IList> ListAsync(ISessionImplementor session, QueryParameters queryParameters, ISet<string> querySpaces, IType[] resultTypes)
+		protected Task<IList> ListAsync(ISessionImplementor session, CancellationToken cancellationToken, QueryParameters queryParameters, ISet<string> querySpaces, IType[] resultTypes)
 		{
 			bool cacheable = _factory.Settings.IsQueryCacheEnabled && queryParameters.Cacheable;
 
 			if (cacheable)
 			{
-				return ListUsingQueryCacheAsync(session, queryParameters, querySpaces, resultTypes);
+				return ListUsingQueryCacheAsync(session, cancellationToken, queryParameters, querySpaces, resultTypes);
 			}
 
-			return ListIgnoreQueryCacheAsync(session, queryParameters);
+			return ListIgnoreQueryCacheAsync(session, cancellationToken, queryParameters);
 		}
 
-		private Task<IList> ListIgnoreQueryCacheAsync(ISessionImplementor session, QueryParameters queryParameters)
+		private Task<IList> ListIgnoreQueryCacheAsync(ISessionImplementor session, CancellationToken cancellationToken, QueryParameters queryParameters)
 		{
-			return DoListAsync(session, queryParameters);
+			return DoListAsync(session, cancellationToken, queryParameters);
 		}
 
-		private Task<IList> ListUsingQueryCacheAsync(ISessionImplementor session, QueryParameters queryParameters, ISet<string> querySpaces, IType[] resultTypes)
+		private Task<IList> ListUsingQueryCacheAsync(ISessionImplementor session, CancellationToken cancellationToken, QueryParameters queryParameters, ISet<string> querySpaces, IType[] resultTypes)
 		{
 			IQueryCache queryCache = _factory.GetQueryCache(queryParameters.CacheRegion);
 
@@ -1641,13 +1662,13 @@ namespace NHibernate.Loader
 
 			if (IsResultNullOrNotSetToTaskCompletionSource(result, taskCompletionSource))
 			{
-				return DoListAsync(session, queryParameters)
+				return DoListAsync(session, cancellationToken, queryParameters)
 					.ContinueWith(task =>
 					{
 						result = task.Result;
 						PutResultInQueryCache(session, queryParameters, resultTypes, queryCache, key, result);
 						return result;
-					});
+					}, cancellationToken);
 			}
 
 			return taskCompletionSource.Task;
@@ -1751,12 +1772,12 @@ namespace NHibernate.Loader
 		/// <param name="session"></param>
 		/// <param name="queryParameters"></param>
 		/// <returns></returns>
-		protected Task<IList> DoListAsync(ISessionImplementor session, QueryParameters queryParameters)
+		protected Task<IList> DoListAsync(ISessionImplementor session, CancellationToken cancellationToken, QueryParameters queryParameters)
 		{
 			bool statsEnabled = Factory.Statistics.IsStatisticsEnabled;
 			var stopWatch = StartStopWatchQueryExecuted(statsEnabled);
 
-			return DoQueryAndInitializeNonLazyCollectionsAsync(session, queryParameters, true)
+			return DoQueryAndInitializeNonLazyCollectionsAsync(session, cancellationToken, queryParameters, true)
 				.ContinueWith(task =>
 					EndDoList(statsEnabled, stopWatch, task, queryParameters));
 		}

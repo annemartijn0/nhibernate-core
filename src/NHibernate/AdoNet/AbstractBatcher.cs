@@ -251,21 +251,6 @@ namespace NHibernate.AdoNet
 		/// <summary>
 		/// Asynchronously gets an <see cref="IDataReader"/> by calling ExecuteReaderAsync on the <see cref="IDbCommand"/>.
 		/// </summary>
-		/// <param name="dbCommand">The <see cref="IDbCommand"/> to execute to get the <see cref="IDataReader"/>.
-		/// Should be of type <see cref="System.Data.SqlClient.SqlCommand"/></param>
-		/// <returns>The <see cref="IDataReader"/> from the <see cref="IDbCommand"/>.</returns>
-		/// <remarks>
-		/// The Batcher is responsible for ensuring that all of the Drivers rules for how many open
-		/// <see cref="IDataReader"/>s it can have are followed.
-		/// </remarks>
-		public virtual Task<DbDataReader> ExecuteReaderAsync(DbCommand dbCommand)
-		{
-			return ExecuteReaderAsync(dbCommand, CancellationToken.None);
-		}
-
-		/// <summary>
-		/// Asynchronously gets an <see cref="IDataReader"/> by calling ExecuteReaderAsync on the <see cref="IDbCommand"/>.
-		/// </summary>
 		/// <param name="dbCommand">The <see cref="IDbCommand"/> to execute to get the <see cref="IDataReader"/>. Should be of type <see cref="System.Data.SqlClient.SqlCommand"/></param>
 		/// <param name="cancellationToken">The <see cref="CancellationToken"/> propagates notification that operations should be canceled.</param>
 		/// <returns>The <see cref="IDataReader"/> from the <see cref="IDbCommand"/>.</returns>
@@ -278,7 +263,7 @@ namespace NHibernate.AdoNet
 			var stopwatch = PrepareExecuteReader(dbCommand);
 
 			return dbCommand.ExecuteReaderAsync(cancellationToken)
-				.ContinueWith(task => EndExecuteReader(task, stopwatch));
+				.ContinueWith(task => EndExecuteReader(task, stopwatch), TaskContinuationOptions.NotOnCanceled);
 		}
 
 		private Stopwatch PrepareExecuteReader(DbCommand cmd)

@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Data;using System.Data.Common;
 using System.Linq.Expressions;
+using System.Threading;
 using System.Threading.Tasks;
 using NHibernate.AdoNet;
 using NHibernate.Cache;
@@ -181,7 +182,7 @@ namespace NHibernate.Impl
 			}
 		}
 
-		public override Task ListAsync(CriteriaImpl criteria, IList results)
+		public override Task ListAsync(CriteriaImpl criteria, IList results, CancellationToken cancellationToken)
 		{
 			throw new NotImplementedException();
 		}

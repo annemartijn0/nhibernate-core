@@ -1,5 +1,7 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Threading;
 using System.Threading.Tasks;
 using NHibernate.Criterion;
 using NHibernate.SqlCommand;
@@ -25,6 +27,53 @@ namespace NHibernate.Test.Criteria
 						"Criteria.Animal.hbm.xml",
 						"Criteria.MaterialResource.hbm.xml"
 					};
+			}
+		}
+
+		[Test]
+		[ExpectedException(typeof(AggregateException))]
+		public void ListAsync_ShouldReturnCanceledTaskWhenPassedCanceledToken()
+		{
+			// Arrange
+			var cancellationTokenSource = new CancellationTokenSource();
+			cancellationTokenSource.Cancel();
+			Task<IList<Student>> result;
+			using (ISession session = OpenSession())
+			{
+				// Act
+				result = session.CreateCriteria<Student>()
+					.ListAsync<Student>(cancellationTokenSource.Token);
+			}
+
+			// Assert
+			Assert.That(result.IsCanceled);
+			result.Wait();
+		}
+
+		[Test]
+		public void ListAsync_ShouldThrowExceptionWhenCancellationTokenIsCanceled()
+		{
+			// Arrange
+			var cancellationTokenSource = new CancellationTokenSource();
+			Task task;
+			using (ISession session = OpenSession())
+			{
+				// Act
+				task = session.CreateCriteria<Student>()
+					.ListAsync<Student>(cancellationTokenSource.Token);
+					
+				cancellationTokenSource.Cancel();
+			}
+
+			try
+			{
+				task.Wait();
+			}
+			catch (AggregateException aggregateException)
+			{
+				// Assert
+				Assert.That(aggregateException.InnerExceptions.Count, Is.EqualTo(1));
+				Assert.That(aggregateException.InnerExceptions[0], Is.TypeOf(typeof(TaskCanceledException)));
 			}
 		}
 

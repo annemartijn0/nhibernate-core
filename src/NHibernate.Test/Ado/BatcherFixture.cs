@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Data.Common;
+using System.Threading;
 using System.Threading.Tasks;
 using NHibernate.AdoNet;
 using NHibernate.Cfg;
@@ -100,8 +101,9 @@ namespace NHibernate.Test.Ado
 				var target = new SqlClientBatchingBatcher(s.GetSessionImplementation().ConnectionManager, null) as AbstractBatcher;
 
 				// Act
-				result = target.ExecuteReaderAsync(new System.Data.SqlClient.SqlCommand
-					(queryString, s.Connection as System.Data.SqlClient.SqlConnection)).Result;
+				result = target.ExecuteReaderAsync(
+					new System.Data.SqlClient.SqlCommand(queryString, s.Connection as System.Data.SqlClient.SqlConnection), 
+					CancellationToken.None).Result;
 			}
 
 			// Assert
@@ -125,8 +127,8 @@ namespace NHibernate.Test.Ado
 						AbstractBatcher;
 
 				// Act
-				var result = target.ExecuteReaderAsync(new System.Data.SqlClient.SqlCommand
-					(queryString, s.Connection as System.Data.SqlClient.SqlConnection));
+				var result = target.ExecuteReaderAsync(
+					new System.Data.SqlClient.SqlCommand(queryString, s.Connection as System.Data.SqlClient.SqlConnection), CancellationToken.None);
 
 				// Assert
 				Assert.IsTrue(result.Status != TaskStatus.Canceled);
@@ -153,8 +155,8 @@ namespace NHibernate.Test.Ado
 				var readersToClose = GetReadersToClose(target);
 
 				// Act
-				var result = target.ExecuteReaderAsync(new System.Data.SqlClient.SqlCommand
-					(queryString, s.Connection as System.Data.SqlClient.SqlConnection))
+				var result = target.ExecuteReaderAsync(
+					new System.Data.SqlClient.SqlCommand(queryString, s.Connection as System.Data.SqlClient.SqlConnection), CancellationToken.None)
 					.Result;
 
 				// Assert
@@ -183,8 +185,8 @@ namespace NHibernate.Test.Ado
 				// Act
 				for (int i = 0; i < numberOfTasks; i++)
 				{
-					tasks[i] = target.ExecuteReaderAsync(new System.Data.SqlClient.SqlCommand
-						(queryString, s.Connection as System.Data.SqlClient.SqlConnection))
+					tasks[i] = target.ExecuteReaderAsync(
+						new System.Data.SqlClient.SqlCommand(queryString, s.Connection as System.Data.SqlClient.SqlConnection), CancellationToken.None)
 						.ContinueWith(task =>
 							// Assert
 							Assert.That(readersToClose.Contains(task.Result)));

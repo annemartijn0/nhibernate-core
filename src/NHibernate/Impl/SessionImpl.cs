@@ -5,6 +5,7 @@ using System.Data;using System.Data.Common;
 using System.Linq.Expressions;
 using System.Runtime.Serialization;
 using System.Security;
+using System.Threading;
 using System.Threading.Tasks;
 using NHibernate.AdoNet;
 using NHibernate.Collection;
@@ -1920,7 +1921,7 @@ namespace NHibernate.Impl
 			}
 		}
 
-		public override Task ListAsync(CriteriaImpl criteria, IList results)
+		public override Task ListAsync(CriteriaImpl criteria, IList results, CancellationToken cancellationToken)
 		{
 			var sessionIdLoggingContext = new SessionIdLoggingContext(SessionId);
 			CheckAndUpdateSessionStatus();
@@ -1951,12 +1952,12 @@ namespace NHibernate.Impl
 			var asyncTasks = new Task<IList>[size];
 			for (int i = size - 1; i >= 0; i--)
 			{
-				asyncTasks[i] = (loaders[i].ListAsync(this));
+				asyncTasks[i] = (loaders[i].ListAsync(this, cancellationToken));
 			}
 
 			return Task.Factory
 				.ContinueWhenAll(asyncTasks, tasks =>
-					EndListAsync(results, tasks, sessionIdLoggingContext));
+					EndListAsync(results, tasks, sessionIdLoggingContext), cancellationToken);
 		}
 
 		private void EndListAsync(IList results, IEnumerable<Task<IList>> tasks, SessionIdLoggingContext sessionIdLoggingContext)

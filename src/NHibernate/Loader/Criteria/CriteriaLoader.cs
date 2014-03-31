@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Data;using System.Data.Common;
 using NHibernate.Engine;
@@ -76,9 +77,9 @@ namespace NHibernate.Loader.Criteria
 			return List(session, translator.GetQueryParameters(), querySpaces, resultTypes);
 		}
 
-		public Task<IList> ListAsync(ISessionImplementor session)
+		public Task<IList> ListAsync(ISessionImplementor session, CancellationToken cancellationToken)
 		{
-			return ListAsync(session, translator.GetQueryParameters(), querySpaces, resultTypes);
+			return ListAsync(session, cancellationToken, translator.GetQueryParameters(), querySpaces, resultTypes);
 		}
 
 		protected override object GetResultColumnOrRow(object[] row, IResultTransformer customResultTransformer, DbDataReader rs, ISessionImplementor session)

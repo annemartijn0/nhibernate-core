@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Data.Common;
 using NHibernate.AdoNet;
@@ -124,7 +125,7 @@ namespace NHibernate.Engine
 
 		IList List(CriteriaImpl criteria);
 
-		Task ListAsync(CriteriaImpl criteria, IList results);
+		Task ListAsync(CriteriaImpl criteria, IList results, CancellationToken cancellationToken);
 
 		/// <summary>
 		/// Execute an <c>Iterate()</c> query
