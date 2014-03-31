@@ -84,17 +84,6 @@ namespace NHibernate.Test.Ado
 			}
 		}
 
-		private static void HandleExecuteReaderAsyncExceptions(AggregateException aggregateException)
-		{
-			foreach (var exception in aggregateException.InnerExceptions)
-			{
-				if (exception is NotSupportedException)
-				{
-					throw exception;
-				}
-			}
-		}
-
 		[Test]
 		[Description("The ExecuteReaderAsync method should return NHybridDataReader and should not return null")]
 		public void ExecuteReaderAsync_ShouldReturn_NHybridDataReader()
