@@ -38,8 +38,8 @@ namespace NHibernate.Test.Ado.AsyncExtensions.AsyncHandler
 			var firstOfChain = ExecuteReaderAsyncHandler.FirstOfChain;
 
 			// Assert
-			Assert.IsNotNull(firstOfChain);
-			Assert.IsInstanceOf(typeof(SqlClientExecuteReaderAsyncHandler), firstOfChain);
+			Assert.That(firstOfChain, Is.Not.Null);
+			Assert.That(firstOfChain, Is.InstanceOf<SqlClientExecuteReaderAsyncHandler>());
 		}
 
 		[Test, Description("ExecuteReaderAsyncHandler.FirstOfChain should return CorrectChain: second handler")]
@@ -49,8 +49,8 @@ namespace NHibernate.Test.Ado.AsyncExtensions.AsyncHandler
 			var firstOfChain = ExecuteReaderAsyncHandler.FirstOfChain;
 
 			// Assert
-			Assert.IsNotNull(firstOfChain.Successor);
-			Assert.IsInstanceOf(typeof(DbClientExecuteReaderAsyncHandler), firstOfChain.Successor);
+			Assert.That(firstOfChain.Successor, Is.Not.Null);
+			Assert.That(firstOfChain.Successor, Is.InstanceOf<DbClientExecuteReaderAsyncHandler>());
 		}
 
 		[Test, Description("ExecuteReaderAsyncHandler.FirstOfChain should return CorrectChain: last handler")]
@@ -60,7 +60,7 @@ namespace NHibernate.Test.Ado.AsyncExtensions.AsyncHandler
 			var firstOfChain = ExecuteReaderAsyncHandler.FirstOfChain;
 
 			// Assert
-			Assert.IsNull(firstOfChain.Successor.Successor);
+			Assert.That(firstOfChain.Successor.Successor, Is.Null);
 		}
 
         [Test, Description("ExecuteReaderAsyncHandler.Handle() should not take null arguments")]

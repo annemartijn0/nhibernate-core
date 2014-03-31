@@ -84,35 +84,6 @@ namespace NHibernate.Test.Ado
 			}
 		}
 
-		[Test, Description("The ExecuteReaderAsync method should only take sqlcommands")]
-		[ExpectedException(typeof(NotSupportedException))]
-		public void ExecuteReaderAsync_ShouldOnlyTake_SqlCommand()
-		{
-			if (sessions.Settings.BatcherFactory is SqlClientBatchingBatcherFactory == false)
-				Assert.Ignore("This test is for SqlClientBatchingBatcher only");
-
-			// Arrange
-			var dbCommandMock = new Mock<DbCommand>();
-
-			using (ISession s = sessions.OpenSession())
-			{
-				var target = new SqlClientBatchingBatcher(s.GetSessionImplementation().ConnectionManager, null) as AbstractBatcher;
-
-				// Act
-				try
-				{
-					target.ExecuteReaderAsync(dbCommandMock.Object).Wait();
-				}
-				catch (AggregateException aggregateException)
-				{
-					HandleExecuteReaderAsyncExceptions(aggregateException);
-				}
-			}
-
-			// Assert
-			// Expected Exception: NotSupportedException
-		}
-
 		private static void HandleExecuteReaderAsyncExceptions(AggregateException aggregateException)
 		{
 			foreach (var exception in aggregateException.InnerExceptions)
