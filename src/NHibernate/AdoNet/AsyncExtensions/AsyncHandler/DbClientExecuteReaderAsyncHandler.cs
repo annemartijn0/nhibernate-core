@@ -11,9 +11,7 @@ namespace NHibernate.AdoNet.AsyncExtensions.AsyncHandler
     {
         private DbCommand _dbCommand;
 
-        public DbClientExecuteReaderAsyncHandler() : base(null) { }
-
-        protected override bool CanHandle(DbCommand dbCommand)
+        protected override bool CanHandleCommand(DbCommand dbCommand)
         {
             _dbCommand = dbCommand;
             return true;

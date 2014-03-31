@@ -31,6 +31,38 @@ namespace NHibernate.Test.Ado.AsyncExtensions.AsyncHandler
             configuration.SetProperty(NHibernate.Cfg.Environment.BatchSize, "10");
         }
 
+		[Test, Description("ExecuteReaderAsyncHandler.FirstOfChain should return CorrectChain: first handler")]
+		public void ExecuteReaderAsyncHandler_ShouldHaveCorrectChain_First()
+		{
+			// Arrange, Act
+			var firstOfChain = ExecuteReaderAsyncHandler.FirstOfChain;
+
+			// Assert
+			Assert.IsNotNull(firstOfChain);
+			Assert.IsInstanceOf(typeof(SqlClientExecuteReaderAsyncHandler), firstOfChain);
+		}
+
+		[Test, Description("ExecuteReaderAsyncHandler.FirstOfChain should return CorrectChain: second handler")]
+		public void ExecuteReaderAsyncHandler_ShouldHaveCorrectChain_Second()
+		{
+			// Arrange, Act
+			var firstOfChain = ExecuteReaderAsyncHandler.FirstOfChain;
+
+			// Assert
+			Assert.IsNotNull(firstOfChain.Successor);
+			Assert.IsInstanceOf(typeof(DbClientExecuteReaderAsyncHandler), firstOfChain.Successor);
+		}
+
+		[Test, Description("ExecuteReaderAsyncHandler.FirstOfChain should return CorrectChain: last handler")]
+		public void ExecuteReaderAsyncHandler_ShouldHaveCorrectChain_Last()
+		{
+			// Arrange, Act
+			var firstOfChain = ExecuteReaderAsyncHandler.FirstOfChain;
+
+			// Assert
+			Assert.IsNull(firstOfChain.Successor.Successor);
+		}
+
         [Test, Description("ExecuteReaderAsyncHandler.Handle() should not take null arguments")]
         [ExpectedException(typeof(ArgumentNullException))]
         public void ExecuteReaderAsyncHandlerHandle_ShouldNotTakeZeroArgument()

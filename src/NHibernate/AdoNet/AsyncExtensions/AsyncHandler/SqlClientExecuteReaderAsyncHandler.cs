@@ -7,26 +7,23 @@ using System.Threading.Tasks;
 
 namespace NHibernate.AdoNet.AsyncExtensions.AsyncHandler
 {
-    public class SqlClientExecuteReaderAsyncHandler : ExecuteReaderAsyncHandler
-    {
-        private System.Data.SqlClient.SqlCommand _sqlCommand;
+	public class SqlClientExecuteReaderAsyncHandler : ExecuteReaderAsyncHandler
+	{
+		private System.Data.SqlClient.SqlCommand _sqlCommand;
 
-        public SqlClientExecuteReaderAsyncHandler()
-            : this(new DbClientExecuteReaderAsyncHandler()) { }
+		public SqlClientExecuteReaderAsyncHandler(IHandler<DbCommand, Task<DbDataReader>> successor)
+			: base(successor) { }
 
-        public SqlClientExecuteReaderAsyncHandler(IHandler<DbCommand, Task<DbDataReader>> successor)
-            : base(successor) { }
+		protected override bool CanHandleCommand(DbCommand dbCommand)
+		{
+			_sqlCommand = dbCommand as System.Data.SqlClient.SqlCommand;
+			return _sqlCommand != null;
+		}
 
-        protected override bool CanHandle(DbCommand dbCommand)
-        {
-            _sqlCommand = dbCommand as System.Data.SqlClient.SqlCommand;
-            return _sqlCommand != null;
-        }
-
-        protected override Task<DbDataReader> ExecuteReaderAsync()
-        {
-            return Task<DbDataReader>.Factory
-                .FromAsync(_sqlCommand.BeginExecuteReader, _sqlCommand.EndExecuteReader, null);
-        }
-    }
+		protected override Task<DbDataReader> ExecuteReaderAsync()
+		{
+			return Task<DbDataReader>.Factory
+				.FromAsync(_sqlCommand.BeginExecuteReader, _sqlCommand.EndExecuteReader, null);
+		}
+	}
 }

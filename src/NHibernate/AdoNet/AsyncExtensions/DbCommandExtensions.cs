@@ -12,17 +12,6 @@ namespace NHibernate.AdoNet.AsyncExtensions
     public static class DbCommandExtensions
     {
         /// <summary>
-        /// Process ExecuteReaderAsync method for given <see cref="DbCommand"/> 
-        /// using given <see cref="IHandler{DbCommand, Task}"/>
-        /// </summary>
-        public static Func<DbCommand, IHandler<DbCommand, Task<DbDataReader>>, Task<DbDataReader>> ProcessExecuteReaderAsync;
-
-        static DbCommandExtensions()
-        {
-            ProcessExecuteReaderAsync = (dbCommand, processor) => processor.Handle(dbCommand);
-        }
-
-        /// <summary>
         /// This is the asynchronous version of System.Data.Common.DbDataReader.Read().
         /// The cancellationToken may optionally be ignored.
         /// The default implementation invokes the synchronous <see cref="System.Data.Common.DbDataReader.Read()"/> method
@@ -40,7 +29,7 @@ namespace NHibernate.AdoNet.AsyncExtensions
             if (cancellationToken.IsCancellationRequested)
                 return CreatedTaskWithCancellation();
 
-            return ProcessExecuteReaderAsync(dbCommand, new SqlClientExecuteReaderAsyncHandler());
+	        return ExecuteReaderAsyncHandler.FirstOfChain.Handle(dbCommand);
         }
 
         private static Task<DbDataReader> CreatedTaskWithCancellation()

@@ -12,28 +12,6 @@ namespace NHibernate.Test.Ado.AsyncExtensions
     [TestFixture]
     public class DbCommandExtensionsFixture
     {
-        [Test, Description("ExecuteReaderAsync should call IExecuteReaderAsyncProcessor.Process()")]
-        public void ExecuteReaderAsync_ShouldCall_IExecuteReaderAsyncProcessorProcess()
-        {
-            // Arrange
-            var target = new System.Data.SqlClient.SqlCommand();
-            var mock = new Mock<IHandler<DbCommand, Task<DbDataReader>>>();
-            DbCommandExtensions.ProcessExecuteReaderAsync = (dbCommand, processor) => mock.Object.Handle(dbCommand);
-
-            // Act
-            var result = target.ExecuteReaderAsync(CancellationToken.None);
-
-            // Assert
-            mock.Verify(x => x.Handle(target), Times.Once);
-        }
-
-        [Test, Description("The Func delegate ProcessExecuteReaderAsync should have an implementation")]
-        public void ProcessExecuteReaderAsync_ShouldBeSet()
-        {
-            // Assert
-            Assert.IsNotNull(DbCommandExtensions.ProcessExecuteReaderAsync);
-        }
-
         [Test, Description("ExecuteReaderAsync should return canceled Task if CancelationToken is canceled")]
         public void ExecuteReaderAsync_ShouldReturnCanceledTask_IfCancelationTokenCanceled()
         {

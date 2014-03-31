@@ -5,6 +5,7 @@ using System.Data.Common;
 using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
+using NHibernate.AdoNet.AsyncExtensions;
 using NHibernate.Driver;
 using NHibernate.Engine;
 using NHibernate.Exceptions;
@@ -274,9 +275,49 @@ namespace NHibernate.AdoNet
 		/// </remarks>
 		public virtual Task<DbDataReader> ExecuteReaderAsync(DbCommand dbCommand, CancellationToken cancellationToken)
 		{
-			var taskCompletionSource = new TaskCompletionSource<DbDataReader>();
-			taskCompletionSource.SetResult(ExecuteReader(dbCommand));
-			return taskCompletionSource.Task;
+			var stopwatch = PrepareExecuteReader(dbCommand);
+
+			return dbCommand.ExecuteReaderAsync(cancellationToken)
+				.ContinueWith(task => EndExecuteReader(task, stopwatch));
+		}
+
+		private Stopwatch PrepareExecuteReader(DbCommand cmd)
+		{
+			CheckReaders();
+			LogCommand(cmd);
+			Prepare(cmd);
+
+			Stopwatch duration = null;
+			if (Log.IsDebugEnabled)
+				duration = Stopwatch.StartNew();
+
+			return duration;
+		}
+
+		private DbDataReader EndExecuteReader(Task<DbDataReader> task, Stopwatch stopwatch)
+		{
+			DbDataReader reader = null;
+			try
+			{
+				reader = task.Result;
+			}
+			finally
+			{
+				if (Log.IsDebugEnabled && stopwatch != null && reader != null)
+				{
+					Log.DebugFormat("ExecuteReader took {0} ms", stopwatch.ElapsedMilliseconds);
+					_readersDuration[reader] = stopwatch;
+				}
+			}
+
+			if (!_factory.ConnectionProvider.Driver.SupportsMultipleOpenReaders)
+			{
+				reader = new NHybridDataReader(reader);
+			}
+
+			_readersToClose.Add(reader);
+			LogOpenReader();
+			return reader;
 		}
 
 		/// <summary>
