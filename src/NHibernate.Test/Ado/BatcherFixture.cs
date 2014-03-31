@@ -13,7 +13,7 @@ using System.Reflection;
 namespace NHibernate.Test.Ado
 {
 	[TestFixture]
-	public class BatcherFixture: TestCase
+	public class BatcherFixture : TestCase
 	{
 		protected override string MappingsAssembly
 		{
@@ -184,13 +184,13 @@ namespace NHibernate.Test.Ado
 				for (int i = 0; i < numberOfTasks; i++)
 				{
 					tasks[i] = target.ExecuteReaderAsync(new System.Data.SqlClient.SqlCommand
-						(queryString, s.Connection as System.Data.SqlClient.SqlConnection));
+						(queryString, s.Connection as System.Data.SqlClient.SqlConnection))
+						.ContinueWith(task =>
+							// Assert
+							Assert.That(readersToClose.Contains(task.Result)));
 				}
 
-				Task.Factory.ContinueWhenAll(tasks, taskResult =>
-					// Assert
-					Assert.AreEqual(numberOfTasks, readersToClose.Count)
-				).Wait();
+				Task.WaitAll(tasks);
 			}
 		}
 
@@ -205,7 +205,7 @@ namespace NHibernate.Test.Ado
 			if (field == null)
 				Assert.Fail("{0}.{1} does not exist anymore, " +
 							"if you renamed this, you should adjust this test accordingly"
-							, abstractBatcherType.ToString(), fieldname);
+							, abstractBatcherType, fieldname);
 
 			return field.GetValue(target) as HashSet<DbDataReader>;
 		}
@@ -237,8 +237,8 @@ namespace NHibernate.Test.Ado
 			using (ISession s = sessions.OpenSession())
 			using (ITransaction tx = s.BeginTransaction())
 			{
-				s.Save(new VerySimple {Id = 1, Name = "Fabio", Weight = 119.5});
-				s.Save(new VerySimple {Id = 2, Name = "Fiamma", Weight = 9.8});
+				s.Save(new VerySimple { Id = 1, Name = "Fabio", Weight = 119.5 });
+				s.Save(new VerySimple { Id = 2, Name = "Fiamma", Weight = 9.8 });
 				tx.Commit();
 			}
 		}
@@ -275,7 +275,7 @@ namespace NHibernate.Test.Ado
 
 			FillDb();
 
-			using(var sqlLog = new SqlLogSpy())
+			using (var sqlLog = new SqlLogSpy())
 			using (ISession s = sessions.OpenSession())
 			using (ITransaction tx = s.BeginTransaction())
 			{
@@ -385,7 +385,7 @@ namespace NHibernate.Test.Ado
 					foreach (var loggingEvent in sl.Appender.GetEvents())
 					{
 						string message = loggingEvent.RenderedMessage;
-						if(message.ToLowerInvariant().Contains("insert"))
+						if (message.ToLowerInvariant().Contains("insert"))
 						{
 							Assert.That(message, Is.StringContaining("batch").IgnoreCase);
 						}
@@ -429,13 +429,13 @@ namespace NHibernate.Test.Ado
 					foreach (var loggingEvent in sl.Appender.GetEvents())
 					{
 						string message = loggingEvent.RenderedMessage;
-						if(message.StartsWith("Adding"))
+						if (message.StartsWith("Adding"))
 						{
 							// should be the line with the formatted SQL
 							var strings = message.Split(System.Environment.NewLine.ToCharArray());
 							foreach (var sqlLine in strings)
 							{
-								if(sqlLine.Contains("p0"))
+								if (sqlLine.Contains("p0"))
 								{
 									Assert.That(sqlLine, Is.StringContaining("p1"));
 									Assert.That(sqlLine, Is.StringContaining("p2"));
