@@ -300,6 +300,14 @@ namespace NHibernate
 		object UniqueResult();
 
 		/// <summary>
+		/// Asynchronously get an enumerable that when enumerated will execute
+		/// a batch of queries in a single database roundtrip
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <returns></returns>
+		Task<IEnumerable<T>> FutureAsync<T>();
+
+		/// <summary>
 		/// Get a enumerable that when enumerated will execute
 		/// a batch of queries in a single database roundtrip
 		/// </summary>

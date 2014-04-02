@@ -314,7 +314,7 @@ namespace NHibernate.Impl
 			var results = new List<T>();
 
 			return ListAsync(results, cancellationToken)
-				.ContinueWith(task => results as IList<T>, cancellationToken);
+				.ContinueWith(_ => (IList<T>)results, cancellationToken);
 		}
 
 		public T UniqueResult<T>()
@@ -450,6 +450,18 @@ namespace NHibernate.Impl
 
 			session.FutureCriteriaBatch.Add<T>(this);
 			return session.FutureCriteriaBatch.GetFutureValue<T>();
+		}
+
+		public Task<IEnumerable<T>> FutureAsync<T>()
+		{
+			if (!session.Factory.ConnectionProvider.Driver.SupportsMultipleQueries)
+			{
+				return ListAsync<T>()
+					.ContinueWith(task => (IEnumerable<T>)task.Result);
+			}
+
+			session.FutureCriteriaBatch.Add<T>(this);
+			return session.FutureCriteriaBatch.GetEnumerator<T>();
 		}
 
 		public IEnumerable<T> Future<T>()
