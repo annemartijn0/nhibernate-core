@@ -194,11 +194,14 @@ namespace NHibernate.Test.NHSpecificTest.Futures
 				{
 					int count = personCount.Value;
 
-					foreach (var person in persons)
+					persons.ContinueWith(_ =>
 					{
+						foreach (var person in persons.Result)
+						{
 
-					}
-
+						}
+					}).Wait();
+					
 					var events = logSpy.Appender.GetEvents();
 					Assert.AreEqual(1, events.Length);
 				}
