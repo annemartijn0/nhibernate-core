@@ -1,7 +1,9 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Data.Common;
 using System.Diagnostics;
+using System.Threading.Tasks;
 using NHibernate.Cache;
 using NHibernate.Driver;
 using NHibernate.Engine;
@@ -391,6 +393,36 @@ namespace NHibernate.Impl
 		/// <summary>
 		/// Return the query results of all the queries
 		/// </summary>
+		public Task<IList> ListAsync()
+		{
+			using (new SessionIdLoggingContext(session.SessionId))
+			{
+				bool cacheable = session.Factory.Settings.IsQueryCacheEnabled && isCacheable;
+				combinedParameters = CreateCombinedQueryParameters();
+
+				if (log.IsDebugEnabled)
+				{
+					log.DebugFormat("Multi query with {0} queries.", queries.Count);
+					for (int i = 0; i < queries.Count; i++)
+					{
+						log.DebugFormat("Query #{0}: {1}", i, queries[i]);
+					}
+				}
+
+				Before();
+				var task = cacheable ? ListUsingQueryCacheAsync() : ListIgnoreQueryCacheAsync();
+
+				return task.ContinueWith(_ =>
+				{
+					After();
+					return task.Result;
+				});
+			}
+		}
+
+		/// <summary>
+		/// Return the query results of all the queries
+		/// </summary>
 		public IList List()
 		{
 			using (new SessionIdLoggingContext(session.SessionId))
@@ -499,106 +531,49 @@ namespace NHibernate.Impl
 			return resultTransformer != null;
 		}
 
+		protected Task<List<object>> DoListAsync()
+		{
+			bool statsEnabled = session.Factory.Statistics.IsStatisticsEnabled;
+			var stopWatch = StartStopWatchDoList(statsEnabled);
+			int rowCount = 0;
+			var results = new List<object>();
+
+
+			return resultSetsCommand
+				.GetReaderAsync(commandTimeout != RowSelection.NoValue ? commandTimeout : (int?)null)
+				.ContinueWith(task =>
+				{
+					try
+					{
+						var reader = task.Result;
+						using (reader)
+						{
+							DoListUsingReader(reader, rowCount, results);
+						}
+						StopStopWatchDoList(statsEnabled, stopWatch, rowCount);
+						return results;
+					}
+					catch (Exception sqle)
+					{
+						var message = string.Format("Failed to execute multi query: [{0}]", resultSetsCommand.Sql);
+						log.Error(message, sqle);
+						throw ADOExceptionHelper.Convert(session.Factory.SQLExceptionConverter, sqle, "Failed to execute multi query", resultSetsCommand.Sql);
+					}
+				});
+		}
+
 		protected List<object> DoList()
 		{
 			bool statsEnabled = session.Factory.Statistics.IsStatisticsEnabled;
-			var stopWatch = new Stopwatch();
-			if (statsEnabled)
-			{
-				stopWatch.Start();
-			}
+			var stopWatch = StartStopWatchDoList(statsEnabled);
 			int rowCount = 0;
-
 			var results = new List<object>();
-
-			var hydratedObjects = new List<object>[Translators.Count];
-			List<EntityKey[]>[] subselectResultKeys = new List<EntityKey[]>[Translators.Count];
-			bool[] createSubselects = new bool[Translators.Count];
 
 			try
 			{
 				using (var reader = resultSetsCommand.GetReader(commandTimeout != RowSelection.NoValue ? commandTimeout : (int?)null))
 				{
-					if (log.IsDebugEnabled)
-					{
-						log.DebugFormat("Executing {0} queries", translators.Count);
-					}
-					for (int i = 0; i < translators.Count; i++)
-					{
-						ITranslator translator = Translators[i];
-						QueryParameters parameter = Parameters[i];
-
-						int entitySpan = translator.Loader.EntityPersisters.Length;
-						hydratedObjects[i] = entitySpan > 0 ? new List<object>() : null;
-						RowSelection selection = parameter.RowSelection;
-						int maxRows = Loader.Loader.HasMaxRows(selection) ? selection.MaxRows : int.MaxValue;
-						if (!dialect.SupportsLimitOffset || !translator.Loader.UseLimit(selection, dialect))
-						{
-							Loader.Loader.Advance(reader, selection);
-						}
-
-						LockMode[] lockModeArray = translator.Loader.GetLockModes(parameter.LockModes);
-						EntityKey optionalObjectKey = Loader.Loader.GetOptionalObjectKey(parameter, session);
-
-						createSubselects[i] = translator.Loader.IsSubselectLoadingEnabled;
-						subselectResultKeys[i] = createSubselects[i] ? new List<EntityKey[]>() : null;
-
-						translator.Loader.HandleEmptyCollections(parameter.CollectionKeys, reader, session);
-						EntityKey[] keys = new EntityKey[entitySpan]; // we can reuse it each time
-
-						if (log.IsDebugEnabled)
-						{
-							log.Debug("processing result set");
-						}
-
-						IList tempResults = new List<object>();
-						int count;
-						for (count = 0; count < maxRows && reader.Read(); count++)
-						{
-							if (log.IsDebugEnabled)
-							{
-								log.Debug("result set row: " + count);
-							}
-
-							rowCount++;
-							object result = translator.Loader.GetRowFromResultSet(
-								reader, session, parameter, lockModeArray, optionalObjectKey, hydratedObjects[i], keys, true);
-							tempResults.Add(result);
-
-							if (createSubselects[i])
-							{
-								subselectResultKeys[i].Add(keys);
-								keys = new EntityKey[entitySpan]; //can't reuse in this case
-							}
-						}
-
-						if (log.IsDebugEnabled)
-						{
-							log.Debug(string.Format("done processing result set ({0} rows)", count));
-						}
-
-						results.Add(tempResults);
-
-						if (log.IsDebugEnabled)
-						{
-							log.DebugFormat("Query {0} returned {1} results", i, tempResults.Count);
-						}
-
-						reader.NextResult();
-					}
-
-					for (int i = 0; i < translators.Count; i++)
-					{
-						ITranslator translator = translators[i];
-						QueryParameters parameter = parameters[i];
-
-						translator.Loader.InitializeEntitiesAndCollections(hydratedObjects[i], reader, session, false);
-
-						if (createSubselects[i])
-						{
-							translator.Loader.CreateSubselects(subselectResultKeys[i], parameter, session);
-						}
-					}
+					DoListUsingReader(reader, rowCount, results);
 				}
 			}
 			catch (Exception sqle)
@@ -608,12 +583,115 @@ namespace NHibernate.Impl
 				throw ADOExceptionHelper.Convert(session.Factory.SQLExceptionConverter, sqle, "Failed to execute multi query", resultSetsCommand.Sql);
 			}
 
+			StopStopWatchDoList(statsEnabled, stopWatch, rowCount);
+			return results;
+		}
+
+		private void DoListUsingReader(DbDataReader reader, int rowCount, List<object> results)
+		{
+			var hydratedObjects = new List<object>[Translators.Count];
+			List<EntityKey[]>[] subselectResultKeys = new List<EntityKey[]>[Translators.Count];
+			bool[] createSubselects = new bool[Translators.Count];
+			if (log.IsDebugEnabled)
+			{
+				log.DebugFormat("Executing {0} queries", translators.Count);
+			}
+			for (int i = 0; i < translators.Count; i++)
+			{
+				ITranslator translator = Translators[i];
+				QueryParameters parameter = Parameters[i];
+
+				int entitySpan = translator.Loader.EntityPersisters.Length;
+				hydratedObjects[i] = entitySpan > 0 ? new List<object>() : null;
+				RowSelection selection = parameter.RowSelection;
+				int maxRows = Loader.Loader.HasMaxRows(selection) ? selection.MaxRows : int.MaxValue;
+				if (!dialect.SupportsLimitOffset || !translator.Loader.UseLimit(selection, dialect))
+				{
+					Loader.Loader.Advance(reader, selection);
+				}
+
+				LockMode[] lockModeArray = translator.Loader.GetLockModes(parameter.LockModes);
+				EntityKey optionalObjectKey = Loader.Loader.GetOptionalObjectKey(parameter, session);
+
+				createSubselects[i] = translator.Loader.IsSubselectLoadingEnabled;
+				subselectResultKeys[i] = createSubselects[i] ? new List<EntityKey[]>() : null;
+
+				translator.Loader.HandleEmptyCollections(parameter.CollectionKeys, reader, session);
+				EntityKey[] keys = new EntityKey[entitySpan]; // we can reuse it each time
+
+				if (log.IsDebugEnabled)
+				{
+					log.Debug("processing result set");
+				}
+
+				IList tempResults = new List<object>();
+				int count;
+				for (count = 0; count < maxRows && reader.Read(); count++)
+				{
+					if (log.IsDebugEnabled)
+					{
+						log.Debug("result set row: " + count);
+					}
+
+					rowCount++;
+					object result = translator.Loader.GetRowFromResultSet(
+						reader, session, parameter, lockModeArray, optionalObjectKey, hydratedObjects[i], keys, true);
+					tempResults.Add(result);
+
+					if (createSubselects[i])
+					{
+						subselectResultKeys[i].Add(keys);
+						keys = new EntityKey[entitySpan]; //can't reuse in this case
+					}
+				}
+
+				if (log.IsDebugEnabled)
+				{
+					log.Debug(string.Format("done processing result set ({0} rows)", count));
+				}
+
+				results.Add(tempResults);
+
+				if (log.IsDebugEnabled)
+				{
+					log.DebugFormat("Query {0} returned {1} results", i, tempResults.Count);
+				}
+
+				reader.NextResult();
+			}
+
+			for (int i = 0; i < translators.Count; i++)
+			{
+				ITranslator translator = translators[i];
+				QueryParameters parameter = parameters[i];
+
+				translator.Loader.InitializeEntitiesAndCollections(hydratedObjects[i], reader, session, false);
+
+				if (createSubselects[i])
+				{
+					translator.Loader.CreateSubselects(subselectResultKeys[i], parameter, session);
+				}
+			}
+		}
+
+		private void StopStopWatchDoList(bool statsEnabled, Stopwatch stopWatch, int rowCount)
+		{
 			if (statsEnabled)
 			{
 				stopWatch.Stop();
-				session.Factory.StatisticsImplementor.QueryExecuted(string.Format("{0} queries (MultiQuery)", translators.Count), rowCount, stopWatch.Elapsed);
+				session.Factory.StatisticsImplementor.QueryExecuted(string.Format("{0} queries (MultiQuery)", translators.Count),
+					rowCount, stopWatch.Elapsed);
 			}
-			return results;
+		}
+
+		private static Stopwatch StartStopWatchDoList(bool statsEnabled)
+		{
+			var stopWatch = new Stopwatch();
+			if (statsEnabled)
+			{
+				stopWatch.Start();
+			}
+			return stopWatch;
 		}
 
 		protected SqlString SqlString
@@ -667,9 +745,68 @@ namespace NHibernate.Impl
 
 		#region Implementation
 
+		private Task<IList> ListIgnoreQueryCacheAsync()
+		{
+			return DoListAsync()
+				.ContinueWith(task => GetResultList(task.Result));
+		}
+
 		private IList ListIgnoreQueryCache()
 		{
 			return GetResultList(DoList());
+		}
+
+		private Task<IList> ListUsingQueryCacheAsync()
+		{
+			IQueryCache queryCache = session.Factory.GetQueryCache(cacheRegion);
+
+			ISet<FilterKey> filterKeys = FilterKey.CreateFilterKeys(session.EnabledFilters, session.EntityMode);
+
+			ISet<string> querySpaces = new HashSet<string>();
+			List<IType[]> resultTypesList = new List<IType[]>(Translators.Count);
+			for (int i = 0; i < Translators.Count; i++)
+			{
+				ITranslator queryTranslator = Translators[i];
+				querySpaces.UnionWith(queryTranslator.QuerySpaces);
+				resultTypesList.Add(queryTranslator.ReturnTypes);
+			}
+			int[] firstRows = new int[Parameters.Count];
+			int[] maxRows = new int[Parameters.Count];
+			for (int i = 0; i < Parameters.Count; i++)
+			{
+				RowSelection rowSelection = Parameters[i].RowSelection;
+				firstRows[i] = rowSelection.FirstRow;
+				maxRows[i] = rowSelection.MaxRows;
+			}
+
+			MultipleQueriesCacheAssembler assembler = new MultipleQueriesCacheAssembler(resultTypesList);
+
+			QueryKey key = new QueryKey(session.Factory, SqlString, combinedParameters, filterKeys)
+				.SetFirstRows(firstRows)
+				.SetMaxRows(maxRows);
+
+			IList result = assembler.GetResultFromQueryCache(session, combinedParameters, querySpaces, queryCache, key);
+
+			if (result == null)
+			{
+				log.Debug("Cache miss for multi query");
+				return DoListAsync()
+					.ContinueWith<IList>(task =>
+					{
+						var list = task.Result;
+						queryCache.Put(key, 
+							new ICacheAssembler[] { assembler }, 
+							new object[] { list }, 
+							false, 
+							session);
+
+						return list;
+					});
+			}
+
+			var taskCompletionSource = new TaskCompletionSource<IList>();
+			taskCompletionSource.SetResult(GetResultList(result));
+			return taskCompletionSource.Task;
 		}
 
 		private IList ListUsingQueryCache()
@@ -820,7 +957,7 @@ namespace NHibernate.Impl
 
 		public SqlTranslator(ISQLQuery sqlQuery, ISessionFactoryImplementor sessionFactory)
 		{
-			var sqlQueryImpl = (SqlQueryImpl) sqlQuery;
+			var sqlQueryImpl = (SqlQueryImpl)sqlQuery;
 			NativeSQLQuerySpecification sqlQuerySpec = sqlQueryImpl.GenerateQuerySpecification(sqlQueryImpl.NamedParams);
 			var sqlCustomQuery = new SQLCustomQuery(sqlQuerySpec.SqlQueryReturns, sqlQuerySpec.QueryString, sqlQuerySpec.QuerySpaces, sessionFactory);
 			loader = new CustomLoader(sqlCustomQuery, sessionFactory);

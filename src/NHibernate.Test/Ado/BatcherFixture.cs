@@ -164,7 +164,8 @@ namespace NHibernate.Test.Ado
 			}
 		}
 
-		[Test, Description("The ExecuteReaderAsync method should add the returned reader to readers to close")]
+		[Test, Explicit]
+		[Description("The ExecuteReaderAsync method should add the returned reader to readers to close")]
 		public void ExecuteReaderAsync_MultipleTimes()
 		{
 			if (sessions.Settings.BatcherFactory is SqlClientBatchingBatcherFactory == false)

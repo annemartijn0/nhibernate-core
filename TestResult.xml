@@ -1,0 +1,76 @@
+﻿<?xml version="1.0" encoding="utf-8" standalone="no"?>
+<!--This file represents the results of running a test suite-->
+<test-results name="C:\Users\Annemartijn\Documents\GitHub\nhibernate-core\NHibernate.nunit" total="1" errors="1" failures="0" not-run="0" inconclusive="0" ignored="0" skipped="0" invalid="0" date="2014-04-02" time="14:57:18">
+  <environment nunit-version="2.6.3.13283" clr-version="2.0.50727.5477" os-version="Microsoft Windows NT 6.1.7601 Service Pack 1" platform="Win32NT" cwd="C:\Users\Annemartijn\Documents\GitHub\nhibernate-core" machine-name="ILIANLAPTOPWERK" user="Annemartijn" user-domain="IlianLaptopWerk" />
+  <culture-info current-culture="nl-NL" current-uiculture="en-US" />
+  <test-suite type="Test Project" name="C:\Users\Annemartijn\Documents\GitHub\nhibernate-core\NHibernate.nunit" executed="True" result="Failure" success="False" time="9.397" asserts="0">
+    <results>
+      <test-suite type="Assembly" name="C:\Users\Annemartijn\Documents\GitHub\nhibernate-core\src\NHibernate.Test\bin\Debug-2.0\NHibernate.Test.dll" executed="True" result="Failure" success="False" time="7.093" asserts="0">
+        <results>
+          <test-suite type="Namespace" name="NHibernate" executed="True" result="Failure" success="False" time="7.064" asserts="0">
+            <results>
+              <test-suite type="Namespace" name="Test" executed="True" result="Failure" success="False" time="7.060" asserts="0">
+                <results>
+                  <test-suite type="Namespace" name="NHSpecificTest" executed="True" result="Failure" success="False" time="7.057" asserts="0">
+                    <results>
+                      <test-suite type="Namespace" name="Futures" executed="True" result="Failure" success="False" time="7.054" asserts="0">
+                        <results>
+                          <test-suite type="TestFixture" name="FutureAsyncCriteriaFixture" executed="True" result="Failure" success="False" time="7.051" asserts="0">
+                            <results>
+                              <test-case name="NHibernate.Test.NHSpecificTest.Futures.FutureAsyncCriteriaFixture.FutureAsyncReturnPeople" executed="True" result="Error" success="False" time="2.162" asserts="1">
+                                <failure>
+                                  <message><![CDATA[System.AggregateException : One or more errors occurred.
+  ----> System.AggregateException : One or more errors occurred.
+  ----> System.AggregateException : One or more errors occurred.
+  ----> System.AggregateException : One or more errors occurred.
+  ----> System.AggregateException : One or more errors occurred.
+  ----> System.ArgumentException : The value "NHibernate.Test.NHSpecificTest.Futures.Person" is not of type "System.Int32" and cannot be used in this generic collection.
+Parameter name: value]]></message>
+                                  <stack-trace><![CDATA[at System.Threading.Tasks.Task.Wait(Int32 millisecondsTimeout, CancellationToken cancellationToken)
+at System.Threading.Tasks.Task.Wait()
+at NHibernate.Test.NHSpecificTest.Futures.FutureAsyncCriteriaFixture.FutureAsyncReturnPeople() in c:\Users\Annemartijn\Documents\GitHub\nhibernate-core\src\NHibernate.Test\NHSpecificTest\Futures\FutureAsyncCriteriaFixture.cs:line 52
+--AggregateException
+at System.Threading.Tasks.Task.Wait(Int32 millisecondsTimeout, CancellationToken cancellationToken)
+at System.Threading.Tasks.Task.Wait()
+at NHibernate.Test.NHSpecificTest.Futures.FutureAsyncCriteriaFixture.<>c__DisplayClass5.<FutureAsyncReturnPeople>b__2(Task`1 persons10) in c:\Users\Annemartijn\Documents\GitHub\nhibernate-core\src\NHibernate.Test\NHSpecificTest\Futures\FutureAsyncCriteriaFixture.cs:line 57
+at System.Threading.Tasks.Task.Execute()
+--AggregateException
+at System.Threading.Tasks.Task`1.GetResultCore(Boolean waitCompletionNotification)
+at NHibernate.Test.NHSpecificTest.Futures.FutureAsyncCriteriaFixture.<>c__DisplayClass5.<>c__DisplayClass7.<FutureAsyncReturnPeople>b__3(Task`1 persons5) in c:\Users\Annemartijn\Documents\GitHub\nhibernate-core\src\NHibernate.Test\NHSpecificTest\Futures\FutureAsyncCriteriaFixture.cs:line 63
+at System.Threading.Tasks.Task.Execute()
+--AggregateException
+at System.Threading.Tasks.Task`1.GetResultCore(Boolean waitCompletionNotification)
+at NHibernate.Impl.FutureBatch`2.<>c__DisplayClass8`1.<GetCurrentResultAsync>b__7(Task`1 task) in c:\Users\Annemartijn\Documents\GitHub\nhibernate-core\src\NHibernate\Impl\FutureBatch.cs:line 115
+at System.Threading.Tasks.ContinuationResultTaskFromResultTask`2.InnerInvoke()
+at System.Threading.Tasks.Task.Execute()
+--AggregateException
+at System.Threading.Tasks.Task`1.GetResultCore(Boolean waitCompletionNotification)
+at NHibernate.Impl.FutureBatch`2.<GetResultsAsync>b__6(Task`1 task) in c:\Users\Annemartijn\Documents\GitHub\nhibernate-core\src\NHibernate\Impl\FutureBatch.cs:line 97
+at System.Threading.Tasks.ContinuationResultTaskFromResultTask`2.InnerInvoke()
+at System.Threading.Tasks.Task.Execute()
+--ArgumentException
+at System.ThrowHelper.ThrowWrongValueTypeArgumentException(Object value, Type targetType)
+at System.Collections.Generic.List`1.System.Collections.IList.Add(Object item)
+at NHibernate.Util.ArrayHelper.AddAll(IList to, IList from) in c:\Users\Annemartijn\Documents\GitHub\nhibernate-core\src\NHibernate\Util\ArrayHelper.cs:line 130
+at NHibernate.Impl.MultiCriteriaImpl.GetResultList(IList results) in c:\Users\Annemartijn\Documents\GitHub\nhibernate-core\src\NHibernate\Impl\MultiCriteriaImpl.cs:line 250
+at NHibernate.Impl.MultiCriteriaImpl.<ListIgnoreQueryCacheAsync>b__4(Task`1 task) in c:\Users\Annemartijn\Documents\GitHub\nhibernate-core\src\NHibernate\Impl\MultiCriteriaImpl.cs:line 222
+at System.Threading.Tasks.ContinuationResultTaskFromResultTask`2.InnerInvoke()
+at System.Threading.Tasks.Task.Execute()
+]]></stack-trace>
+                                </failure>
+                              </test-case>
+                            </results>
+                          </test-suite>
+                        </results>
+                      </test-suite>
+                    </results>
+                  </test-suite>
+                </results>
+              </test-suite>
+            </results>
+          </test-suite>
+        </results>
+      </test-suite>
+    </results>
+  </test-suite>
+</test-results>

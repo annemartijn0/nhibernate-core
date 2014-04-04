@@ -314,7 +314,7 @@ namespace NHibernate.Impl
 			var results = new List<T>();
 
 			return ListAsync(results, cancellationToken)
-				.ContinueWith(_ => (IList<T>)results, cancellationToken);
+				.ContinueWith<IList<T>>(_ => results, cancellationToken);
 		}
 
 		public T UniqueResult<T>()
@@ -452,16 +452,32 @@ namespace NHibernate.Impl
 			return session.FutureCriteriaBatch.GetFutureValue<T>();
 		}
 
+		private static Task _getEnumeratorAsyncTask;
+
 		public Task<IEnumerable<T>> FutureAsync<T>()
 		{
 			if (!session.Factory.ConnectionProvider.Driver.SupportsMultipleQueries)
 			{
 				return ListAsync<T>()
-					.ContinueWith(task => (IEnumerable<T>)task.Result);
+					.ContinueWith<IEnumerable<T>>(task => task.Result);
+			}
+			if (session.FutureCriteriaBatch.ResultsAsync != null)
+			{
+				return FutureAsyncContinuation<T>();
 			}
 
 			session.FutureCriteriaBatch.Add<T>(this);
-			return session.FutureCriteriaBatch.GetEnumerator<T>();
+			return session.FutureCriteriaBatch.GetEnumeratorAsync<T>();
+		}
+
+		private Task<IEnumerable<T>> FutureAsyncContinuation<T>()
+		{
+			return session.FutureCriteriaBatch.ResultsAsync
+				.ContinueWith(_ =>
+				{
+					session.FutureCriteriaBatch.Add<T>(this);
+					return Future<T>();
+				});
 		}
 
 		public IEnumerable<T> Future<T>()
@@ -840,6 +856,11 @@ namespace NHibernate.Impl
 			public IFutureValue<T> FutureValue<T>()
 			{
 				return root.FutureValue<T>();
+			}
+
+			public Task<IEnumerable<T>> FutureAsync<T>()
+			{
+				return root.FutureAsync<T>();
 			}
 
 			public IEnumerable<T> Future<T>()

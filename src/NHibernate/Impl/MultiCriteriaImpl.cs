@@ -1,7 +1,9 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Data.Common;
 using System.Diagnostics;
+using System.Threading.Tasks;
 using NHibernate.Cache;
 using NHibernate.Criterion;
 using NHibernate.Driver;
@@ -29,6 +31,7 @@ namespace NHibernate.Impl
 		private readonly List<int> loaderCriteriaMap = new List<int>();
 		private readonly Dialect.Dialect dialect;
 		private IList criteriaResults;
+		private Task<IList> criteriaResultsAsync;
 		private readonly Dictionary<string, int> criteriaResultPositions = new Dictionary<string, int>();
 		private bool isCacheable = false;
 		private bool forceCacheRefresh = false;
@@ -58,6 +61,30 @@ namespace NHibernate.Impl
 			}
 		}
 
+		public Task<IList> ListAsync()
+		{
+			using (new SessionIdLoggingContext(session.SessionId))
+			{
+				bool cacheable = session.Factory.Settings.IsQueryCacheEnabled && isCacheable;
+
+				CreateCriteriaLoaders();
+				CombineCriteriaQueries();
+
+				ListLog();
+
+				if (cacheable)
+				{
+					criteriaResultsAsync = ListUsingQueryCacheAsync();
+				}
+				else
+				{
+					criteriaResultsAsync = ListIgnoreQueryCacheAsync();
+				}
+
+				return criteriaResultsAsync;
+			}
+		}
+
 		public IList List()
 		{
 			using (new SessionIdLoggingContext(session.SessionId))
@@ -67,14 +94,7 @@ namespace NHibernate.Impl
 				CreateCriteriaLoaders();
 				CombineCriteriaQueries();
 
-				if (log.IsDebugEnabled)
-				{
-					log.DebugFormat("Multi criteria with {0} criteria queries.", criteriaQueries.Count);
-					for (int i = 0; i < criteriaQueries.Count; i++)
-					{
-						log.DebugFormat("Query #{0}: {1}", i, criteriaQueries[i]);
-					}
-				}
+				ListLog();
 
 				if (cacheable)
 				{
@@ -87,6 +107,71 @@ namespace NHibernate.Impl
 
 				return criteriaResults;
 			}
+		}
+
+		private void ListLog()
+		{
+			if (log.IsDebugEnabled)
+			{
+				log.DebugFormat("Multi criteria with {0} criteria queries.", criteriaQueries.Count);
+				for (int i = 0; i < criteriaQueries.Count; i++)
+				{
+					log.DebugFormat("Query #{0}: {1}", i, criteriaQueries[i]);
+				}
+			}
+		}
+
+		private Task<IList> ListUsingQueryCacheAsync()
+		{
+			IQueryCache queryCache = session.Factory.GetQueryCache(cacheRegion);
+
+			ISet<FilterKey> filterKeys = FilterKey.CreateFilterKeys(session.EnabledFilters, session.EntityMode);
+
+			ISet<string> querySpaces = new HashSet<string>();
+			List<IType[]> resultTypesList = new List<IType[]>();
+			int[] maxRows = new int[loaders.Count];
+			int[] firstRows = new int[loaders.Count];
+			for (int i = 0; i < loaders.Count; i++)
+			{
+				querySpaces.UnionWith(loaders[i].QuerySpaces);
+				resultTypesList.Add(loaders[i].ResultTypes);
+				firstRows[i] = parameters[i].RowSelection.FirstRow;
+				maxRows[i] = parameters[i].RowSelection.MaxRows;
+			}
+
+			MultipleQueriesCacheAssembler assembler = new MultipleQueriesCacheAssembler(resultTypesList);
+			QueryParameters combinedParameters = CreateCombinedQueryParameters();
+			QueryKey key = new QueryKey(session.Factory, SqlString, combinedParameters, filterKeys)
+				.SetFirstRows(firstRows)
+				.SetMaxRows(maxRows);
+
+			IList result =
+				assembler.GetResultFromQueryCache(session,
+												  combinedParameters,
+												  querySpaces,
+												  queryCache,
+												  key);
+
+			if (result == null)
+			{
+				log.Debug("Cache miss for multi criteria query");
+				return DoListAsync()
+					.ContinueWith(task =>
+					{
+						var list = task.Result;
+						queryCache.Put(key, 
+							new ICacheAssembler[] {assembler}, 
+							new object[] {list}, 
+							combinedParameters.NaturalKeyLookup,
+							session);
+
+						return list;
+					});
+			}
+
+			var taskCompletionSource = new TaskCompletionSource<IList>();
+			taskCompletionSource.SetResult(GetResultList(result));
+			return taskCompletionSource.Task;
 		}
 
 		private IList ListUsingQueryCache()
@@ -131,6 +216,12 @@ namespace NHibernate.Impl
 			return GetResultList(result);
 		}
 
+		private Task<IList> ListIgnoreQueryCacheAsync()
+		{
+			return DoListAsync()
+				.ContinueWith(task => GetResultList(task.Result));
+		}
+
 		private IList ListIgnoreQueryCache()
 		{
 			return GetResultList(DoList());
@@ -170,6 +261,13 @@ namespace NHibernate.Impl
 			return resultCollections;
 		}
 
+		private Task<IList> DoListAsync()
+		{
+			List<IList> results = new List<IList>();
+			return GetResultsFromDatabaseAsync(results)
+				.ContinueWith<IList>(_ => results);
+		}
+
 		private IList DoList()
 		{
 			List<IList> results = new List<IList>();
@@ -190,70 +288,44 @@ namespace NHibernate.Impl
 			}
 		}
 
+		private Task GetResultsFromDatabaseAsync(IList results)
+		{
+			bool statsEnabled = session.Factory.Statistics.IsStatisticsEnabled;
+			var stopWatch = StartStopWatchGetResultsFromDatabase(statsEnabled);
+			int rowCount = 0;
+
+			return resultSetsCommand.GetReaderAsync(null)
+				.ContinueWith(task =>
+				{
+					try
+					{
+						var reader = task.Result;
+						using (reader)
+						{
+							GetResultsFromDatabaseUsingReader(results, reader, rowCount);
+						}
+					}
+					catch (Exception sqle)
+					{
+						var message = string.Format("Failed to execute multi criteria: [{0}]", resultSetsCommand.Sql);
+						log.Error(message, sqle);
+						throw ADOExceptionHelper.Convert(session.Factory.SQLExceptionConverter, sqle, "Failed to execute multi criteria", resultSetsCommand.Sql);
+					}
+					StopStopwatchGetResultsFromDatabase(statsEnabled, stopWatch, rowCount);
+				});
+		}
+
 		private void GetResultsFromDatabase(IList results)
 		{
 			bool statsEnabled = session.Factory.Statistics.IsStatisticsEnabled;
-			var stopWatch = new Stopwatch();
-			if (statsEnabled)
-			{
-				stopWatch.Start();
-			}
+			var stopWatch = StartStopWatchGetResultsFromDatabase(statsEnabled);
 			int rowCount = 0;
 
 			try
 			{
 				using (var reader = resultSetsCommand.GetReader(null))
 				{
-					var hydratedObjects = new List<object>[loaders.Count];
-					List<EntityKey[]>[] subselectResultKeys = new List<EntityKey[]>[loaders.Count];
-					bool[] createSubselects = new bool[loaders.Count];
-					for (int i = 0; i < loaders.Count; i++)
-					{
-						CriteriaLoader loader = loaders[i];
-						int entitySpan = loader.EntityPersisters.Length;
-						hydratedObjects[i] = entitySpan == 0 ? null : new List<object>(entitySpan);
-						EntityKey[] keys = new EntityKey[entitySpan];
-						QueryParameters queryParameters = parameters[i];
-						IList tmpResults = new List<object>();
-
-						RowSelection selection = parameters[i].RowSelection;
-						createSubselects[i] = loader.IsSubselectLoadingEnabled;
-						subselectResultKeys[i] = createSubselects[i] ? new List<EntityKey[]>() : null;
-						int maxRows = Loader.Loader.HasMaxRows(selection) ? selection.MaxRows : int.MaxValue;
-						if (!dialect.SupportsLimitOffset || !loader.UseLimit(selection, dialect))
-						{
-							Loader.Loader.Advance(reader, selection);
-						}
-						int count;
-						for (count = 0; count < maxRows && reader.Read(); count++)
-						{
-							rowCount++;
-
-							object o =
-								loader.GetRowFromResultSet(reader, session, queryParameters, loader.GetLockModes(queryParameters.LockModes),
-																					 null, hydratedObjects[i], keys, true);
-							if (createSubselects[i])
-							{
-								subselectResultKeys[i].Add(keys);
-								keys = new EntityKey[entitySpan]; //can't reuse in this case
-							}
-							tmpResults.Add(o);
-						}
-
-						results.Add(tmpResults);
-						reader.NextResult();
-					}
-
-					for (int i = 0; i < loaders.Count; i++)
-					{
-						CriteriaLoader loader = loaders[i];
-						loader.InitializeEntitiesAndCollections(hydratedObjects[i], reader, session, false);
-
-						if (createSubselects[i])
-						{
-							loader.CreateSubselects(subselectResultKeys[i], parameters[i], session);
-						}
-					}
+					GetResultsFromDatabaseUsingReader(results, reader, rowCount);
 				}
 			}
 			catch (Exception sqle)
@@ -262,10 +334,80 @@ namespace NHibernate.Impl
 				log.Error(message, sqle);
 				throw ADOExceptionHelper.Convert(session.Factory.SQLExceptionConverter, sqle, "Failed to execute multi criteria", resultSetsCommand.Sql);
 			}
+			StopStopwatchGetResultsFromDatabase(statsEnabled, stopWatch, rowCount);
+		}
+
+		private void GetResultsFromDatabaseUsingReader(IList results, DbDataReader reader, int rowCount)
+		{
+			var hydratedObjects = new List<object>[loaders.Count];
+			List<EntityKey[]>[] subselectResultKeys = new List<EntityKey[]>[loaders.Count];
+			bool[] createSubselects = new bool[loaders.Count];
+			for (int i = 0; i < loaders.Count; i++)
+			{
+				CriteriaLoader loader = loaders[i];
+				int entitySpan = loader.EntityPersisters.Length;
+				hydratedObjects[i] = entitySpan == 0 ? null : new List<object>(entitySpan);
+				EntityKey[] keys = new EntityKey[entitySpan];
+				QueryParameters queryParameters = parameters[i];
+				IList tmpResults = new List<object>();
+
+				RowSelection selection = parameters[i].RowSelection;
+				createSubselects[i] = loader.IsSubselectLoadingEnabled;
+				subselectResultKeys[i] = createSubselects[i] ? new List<EntityKey[]>() : null;
+				int maxRows = Loader.Loader.HasMaxRows(selection) ? selection.MaxRows : int.MaxValue;
+				if (!dialect.SupportsLimitOffset || !loader.UseLimit(selection, dialect))
+				{
+					Loader.Loader.Advance(reader, selection);
+				}
+				int count;
+				for (count = 0; count < maxRows && reader.Read(); count++)
+				{
+					rowCount++;
+
+					object o =
+						loader.GetRowFromResultSet(reader, session, queryParameters, loader.GetLockModes(queryParameters.LockModes),
+							null, hydratedObjects[i], keys, true);
+					if (createSubselects[i])
+					{
+						subselectResultKeys[i].Add(keys);
+						keys = new EntityKey[entitySpan]; //can't reuse in this case
+					}
+					tmpResults.Add(o);
+				}
+
+				results.Add(tmpResults);
+				reader.NextResult();
+			}
+
+			for (int i = 0; i < loaders.Count; i++)
+			{
+				CriteriaLoader loader = loaders[i];
+				loader.InitializeEntitiesAndCollections(hydratedObjects[i], reader, session, false);
+
+				if (createSubselects[i])
+				{
+					loader.CreateSubselects(subselectResultKeys[i], parameters[i], session);
+				}
+			}
+		}
+
+		private static Stopwatch StartStopWatchGetResultsFromDatabase(bool statsEnabled)
+		{
+			var stopWatch = new Stopwatch();
+			if (statsEnabled)
+			{
+				stopWatch.Start();
+			}
+			return stopWatch;
+		}
+
+		private void StopStopwatchGetResultsFromDatabase(bool statsEnabled, Stopwatch stopWatch, int rowCount)
+		{
 			if (statsEnabled)
 			{
 				stopWatch.Stop();
-				session.Factory.StatisticsImplementor.QueryExecuted(string.Format("{0} queries (MultiCriteria)", loaders.Count), rowCount, stopWatch.Elapsed);
+				session.Factory.StatisticsImplementor.QueryExecuted(string.Format("{0} queries (MultiCriteria)", loaders.Count),
+					rowCount, stopWatch.Elapsed);
 			}
 		}
 

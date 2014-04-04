@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Threading.Tasks;
 using NHibernate.Criterion;
 using NHibernate.Transform;
 
@@ -9,6 +10,11 @@ namespace NHibernate
 	/// </summary>
 	public interface IMultiCriteria
 	{
+		/// <summary>
+		/// Asynchronously get all the results
+		/// </summary>
+		Task<IList> ListAsync();
+
 		/// <summary>
 		/// Get all the results
 		/// </summary>

@@ -7,15 +7,15 @@ namespace NHibernate.Test.NHSpecificTest.NH2189
 	{
 		public Policy()
 		{
-			Tasks = new HashSet<Task>();
+			Tasks = new HashSet<PolicyTask>();
 		}
 
 		public virtual Guid Id { get; protected set; }
 		public virtual int PolicyNumber { get; set; }
-		public virtual ISet<Task> Tasks { get; protected set; }
+		public virtual ISet<PolicyTask> Tasks { get; protected set; }
 	}
 
-	public class Task
+	public class PolicyTask
 	{
 		public virtual Guid Id { get; protected set; }
 		public virtual string TaskName { get; set; }

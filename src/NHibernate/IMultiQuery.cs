@@ -1,5 +1,6 @@
 using System;
 using System.Collections;
+using System.Threading.Tasks;
 using NHibernate.Transform;
 using NHibernate.Type;
 
@@ -10,6 +11,14 @@ namespace NHibernate
 	/// </summary>
 	public interface IMultiQuery
 	{
+		/// <summary>
+		/// Asynchronously get all the results
+		/// </summary>
+		/// <remarks>
+		/// Result of <see cref="Task"/>: the result is a IList of IList.
+		/// </remarks>
+		Task<IList> ListAsync();
+
 		/// <summary>
 		/// Get all the results
 		/// </summary>

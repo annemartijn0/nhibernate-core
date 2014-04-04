@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Threading.Tasks;
 
 namespace NHibernate.Impl
 {
@@ -17,6 +18,11 @@ namespace NHibernate.Impl
 		protected override void AddTo(IMultiCriteria multiApproach, ICriteria query, System.Type resultType)
 		{
 			multiApproach.Add(resultType, query);
+		}
+
+		protected override Task<IList> GetResultsFromAsync(IMultiCriteria multiApproach)
+		{
+			return multiApproach.ListAsync();
 		}
 
 		protected override IList GetResultsFrom(IMultiCriteria multiApproach)

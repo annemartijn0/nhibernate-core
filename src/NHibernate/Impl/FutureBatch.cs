@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 
 namespace NHibernate.Impl
 {
@@ -9,6 +10,7 @@ namespace NHibernate.Impl
 		private readonly List<TQueryApproach> queries = new List<TQueryApproach>();
 		private readonly IList<System.Type> resultTypes = new List<System.Type>();
 		private int index;
+		private Task<IList> resultsAsync;
 		private IList results;
 		private bool isCacheable = true;
 		private string cacheRegion;
@@ -18,6 +20,18 @@ namespace NHibernate.Impl
 		protected FutureBatch(SessionImpl session)
 		{
 			this.session = session;
+		}
+
+		public Task<IList> ResultsAsync
+		{
+			get
+			{
+				if (resultsAsync == null)
+				{
+					GetResultsAsync();
+				}
+				return resultsAsync;
+			}
 		}
 
 		public IList Results
@@ -57,10 +71,37 @@ namespace NHibernate.Impl
 			return new FutureValue<TResult>(() => GetCurrentResult<TResult>(currentIndex));
 		}
 
+		public Task<IEnumerable<TResult>> GetEnumeratorAsync<TResult>()
+		{
+			int currentIndex = index;
+			return GetCurrentResultAsync<TResult>(currentIndex);
+		}
+
 		public IEnumerable<TResult> GetEnumerator<TResult>()
 		{
 			int currentIndex = index;
 			return new DelayedEnumerator<TResult>(() => GetCurrentResult<TResult>(currentIndex));
+		}
+
+		private void GetResultsAsync()
+		{
+			var multiApproach = CreateMultiApproach(isCacheable, cacheRegion);
+			for (int i = 0; i < queries.Count; i++)
+			{
+				AddTo(multiApproach, queries[i], resultTypes[i]);
+			}
+			resultsAsync = GetResultsFromAsync(multiApproach)
+				.ContinueWith(task =>
+				{
+					try
+					{
+						return task.Result;
+					}
+					finally
+					{
+						ClearCurrentFutureBatch();
+					}
+				});
 		}
 
 		private void GetResults()
@@ -74,6 +115,12 @@ namespace NHibernate.Impl
 			ClearCurrentFutureBatch();
 		}
 
+		private Task<IEnumerable<TResult>> GetCurrentResultAsync<TResult>(int currentIndex)
+		{
+			return ResultsAsync.ContinueWith(task => 
+				((IList)task.Result[currentIndex]).Cast<TResult>());
+		}
+
 		private IEnumerable<TResult> GetCurrentResult<TResult>(int currentIndex)
 		{
 			return ((IList)Results[currentIndex]).Cast<TResult>();
@@ -81,6 +128,7 @@ namespace NHibernate.Impl
 
 		protected abstract TMultiApproach CreateMultiApproach(bool isCacheable, string cacheRegion);
 		protected abstract void AddTo(TMultiApproach multiApproach, TQueryApproach query, System.Type resultType);
+		protected abstract Task<IList> GetResultsFromAsync(TMultiApproach multiApproach);
 		protected abstract IList GetResultsFrom(TMultiApproach multiApproach);
 		protected abstract void ClearCurrentFutureBatch();
 		protected abstract bool IsQueryCacheable(TQueryApproach query);

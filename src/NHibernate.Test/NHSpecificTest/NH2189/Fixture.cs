@@ -26,11 +26,11 @@ namespace NHibernate.Test.NHSpecificTest.NH2189
 				s.Save(tm2);
 
 				var policy1 = new Policy() { PolicyNumber = 5 };
-				policy1.Tasks.Add(new Task() { Policy = policy1, TaskName = "Task1", TeamMember = tm1 });
+				policy1.Tasks.Add(new PolicyTask() { Policy = policy1, TaskName = "Task1", TeamMember = tm1 });
 
 				var policy2 = new Policy() { PolicyNumber = 5 };
-				policy2.Tasks.Add(new Task() { Policy = policy2, TaskName = "Task2", TeamMember = tm2 });
-				policy2.Tasks.Add(new Task() { Policy = policy2, TaskName = "Task3", TeamMember = tm2 });
+				policy2.Tasks.Add(new PolicyTask() { Policy = policy2, TaskName = "Task2", TeamMember = tm2 });
+				policy2.Tasks.Add(new PolicyTask() { Policy = policy2, TaskName = "Task3", TeamMember = tm2 });
 
 				s.Save(policy1);
 				s.Save(policy2);
@@ -110,9 +110,9 @@ namespace NHibernate.Test.NHSpecificTest.NH2189
 				Assert.That(NHibernateUtil.IsInitialized(policy2.Tasks.ElementAt(0)));
 				Assert.That(NHibernateUtil.IsInitialized(policy2.Tasks.ElementAt(1)));
 
-				IEnumerable<Task> tasks = s.CreateQuery("SELECT t FROM Task t " +
+				IEnumerable<PolicyTask> tasks = s.CreateQuery("SELECT t FROM Task t " +
 					"INNER JOIN FETCH t.TeamMember ORDER BY t.TaskName")
-					.Future<Task>();
+					.Future<PolicyTask>();
 
 				Assert.That(tasks.Count(), Is.EqualTo(3));
 
@@ -138,11 +138,11 @@ namespace NHibernate.Test.NHSpecificTest.NH2189
 				Assert.That(NHibernateUtil.IsInitialized(policy2.Tasks.ElementAt(0)));
 				Assert.That(NHibernateUtil.IsInitialized(policy2.Tasks.ElementAt(1)));
 
-				IEnumerable<Task> tasks =
-					s.CreateCriteria<Task>()
+				IEnumerable<PolicyTask> tasks =
+					s.CreateCriteria<PolicyTask>()
 						.SetFetchMode("TeamMember", FetchMode.Eager)
 						.AddOrder(Order.Asc("TaskName"))
-						.Future<Task>();
+						.Future<PolicyTask>();
 
 				Assert.That(tasks.Count(), Is.EqualTo(3));
 
