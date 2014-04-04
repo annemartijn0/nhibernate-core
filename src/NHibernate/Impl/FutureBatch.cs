@@ -22,6 +22,11 @@ namespace NHibernate.Impl
 			this.session = session;
 		}
 
+		public bool ResultsAsyncIsSet
+		{
+			get { return resultsAsync != null; }
+		}
+
 		public Task<IList> ResultsAsync
 		{
 			get

@@ -121,7 +121,7 @@ namespace NHibernate.Test.NHSpecificTest.Futures
 				{
 					s.CreateCriteria(typeof(Person))
 					.SetMaxResults(5)
-					.FutureAsync<int>()
+					.FutureAsync<Person>()
 					.ContinueWith(persons5 =>
 					{
 						using (var logSpy = new SqlLogSpy())
@@ -145,7 +145,7 @@ namespace NHibernate.Test.NHSpecificTest.Futures
 		}
 
 		[Test]
-		public void TwoFuturesRunInTwoRoundTrips()
+		public void TwoFutureAsyncssRunInTwoRoundTrips()
 		{
 			using (var s = sessions.OpenSession())
 			{
@@ -153,17 +153,21 @@ namespace NHibernate.Test.NHSpecificTest.Futures
 
 				using (var logSpy = new SqlLogSpy())
 				{
-					var persons10 = s.CreateCriteria(typeof(Person))
+					s.CreateCriteria(typeof(Person))
 						.SetMaxResults(10)
-						.Future<Person>();
+						.FutureAsync<Person>()
+						.ContinueWith(persons10 =>
+						{
+							foreach (var person in persons10.Result) { } // fire first future round-trip
+						}).Wait();
 
-					foreach (var person in persons10) { } // fire first future round-trip
-
-					var persons5 = s.CreateCriteria(typeof(Person))
+					s.CreateCriteria(typeof(Person))
 						.SetMaxResults(5)
-						.Future<int>();
-
-					foreach (var person in persons5) { } // fire second future round-trip
+						.FutureAsync<Person>()
+						.ContinueWith(persons5 =>
+						{
+							foreach (var person in persons5.Result) { } // fire second future round-trip
+						}).Wait();
 
 					var events = logSpy.Appender.GetEvents();
 					Assert.AreEqual(2, events.Length);
@@ -180,7 +184,7 @@ namespace NHibernate.Test.NHSpecificTest.Futures
 
 				var persons = s.CreateCriteria(typeof(Person))
 					.SetMaxResults(10)
-					.Future<Person>();
+					.FutureAsync<Person>();
 
 				var personCount = s.CreateCriteria(typeof(Person))
 					.SetProjection(Projections.RowCount())

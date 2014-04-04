@@ -461,16 +461,17 @@ namespace NHibernate.Impl
 				return ListAsync<T>()
 					.ContinueWith<IEnumerable<T>>(task => task.Result);
 			}
-			if (session.FutureCriteriaBatch.ResultsAsync != null)
+
+			if (session.FutureCriteriaBatch.ResultsAsyncIsSet)
 			{
-				return FutureAsyncContinuation<T>();
+				return ContinueSynchronousFuture<T>();
 			}
 
 			session.FutureCriteriaBatch.Add<T>(this);
 			return session.FutureCriteriaBatch.GetEnumeratorAsync<T>();
 		}
 
-		private Task<IEnumerable<T>> FutureAsyncContinuation<T>()
+		private Task<IEnumerable<T>> ContinueSynchronousFuture<T>()
 		{
 			return session.FutureCriteriaBatch.ResultsAsync
 				.ContinueWith(_ =>
