@@ -10,7 +10,8 @@ namespace NHibernate
 	public interface IAwaitableEnumerable<T> : IEnumerable<T>
 	{
 		/// <summary>
-		/// Asynchronously creates a <see cref="IEnumerable{T}" /> from the database />.
+		/// Asynchronously queries the database an creates an 
+		/// <see cref="IEnumerable{T}" /> from results.
 		/// </summary>
 		/// <returns>
 		/// A <see cref="Task" /> containing a <see cref="IEnumerable{T}" /> 
@@ -19,7 +20,8 @@ namespace NHibernate
 		Task<IEnumerable<T>> AsTask();
 
 		/// <summary>
-		/// Asynchronously creates a <see cref="IEnumerable{T}" /> from the database />.
+		/// Asynchronously queries the database an creates an 
+		/// <see cref="IEnumerable{T}" /> from results.
 		/// </summary>
 		/// <param name="cancellationToken">Token to cancel the request.</param>
 		/// <returns>

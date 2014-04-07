@@ -300,9 +300,10 @@ namespace NHibernate
 		object UniqueResult();
 
 		/// <summary>
-		/// Asynchronously get an enumerable that when enumerated will execute
+		/// Get an enumerable that when enumerated will execute
 		/// a batch of queries in a single database roundtrip.
-		/// This <see cref="IAwaitableEnumerable{T}"/> has an <see cref="IAwaitableEnumerable{T}.AsTask"/> method
+		/// This <see cref="IAwaitableEnumerable{T}"/> has an 
+		/// <see cref="IAwaitableEnumerable{T}.AsTask()"/> method
 		/// that will execute the database query asynchronously
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
