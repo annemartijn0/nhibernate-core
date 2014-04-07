@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Data.Common;
 using System.Diagnostics;
+using System.Threading;
 using System.Threading.Tasks;
 using NHibernate.Cache;
 using NHibernate.Driver;
@@ -393,7 +394,7 @@ namespace NHibernate.Impl
 		/// <summary>
 		/// Return the query results of all the queries
 		/// </summary>
-		public Task<IList> ListAsync()
+		public Task<IList> ListAsync(CancellationToken cancellationToken)
 		{
 			using (new SessionIdLoggingContext(session.SessionId))
 			{
@@ -410,7 +411,9 @@ namespace NHibernate.Impl
 				}
 
 				Before();
-				var task = cacheable ? ListUsingQueryCacheAsync() : ListIgnoreQueryCacheAsync();
+				var task = cacheable 
+					? ListUsingQueryCacheAsync(cancellationToken) 
+					: ListIgnoreQueryCacheAsync(cancellationToken);
 
 				return task.ContinueWith(_ =>
 				{
@@ -531,7 +534,7 @@ namespace NHibernate.Impl
 			return resultTransformer != null;
 		}
 
-		protected Task<List<object>> DoListAsync()
+		protected Task<List<object>> DoListAsync(CancellationToken cancellationToken)
 		{
 			bool statsEnabled = session.Factory.Statistics.IsStatisticsEnabled;
 			var stopWatch = StartStopWatchDoList(statsEnabled);
@@ -540,7 +543,7 @@ namespace NHibernate.Impl
 
 
 			return resultSetsCommand
-				.GetReaderAsync(commandTimeout != RowSelection.NoValue ? commandTimeout : (int?)null)
+				.GetReaderAsync(commandTimeout != RowSelection.NoValue ? commandTimeout : (int?)null, cancellationToken)
 				.ContinueWith(task =>
 				{
 					try
@@ -745,10 +748,10 @@ namespace NHibernate.Impl
 
 		#region Implementation
 
-		private Task<IList> ListIgnoreQueryCacheAsync()
+		private Task<IList> ListIgnoreQueryCacheAsync(CancellationToken cancellationToken)
 		{
-			return DoListAsync()
-				.ContinueWith(task => GetResultList(task.Result));
+			return DoListAsync(cancellationToken)
+				.ContinueWith(task => GetResultList(task.Result), cancellationToken);
 		}
 
 		private IList ListIgnoreQueryCache()
@@ -756,7 +759,7 @@ namespace NHibernate.Impl
 			return GetResultList(DoList());
 		}
 
-		private Task<IList> ListUsingQueryCacheAsync()
+		private Task<IList> ListUsingQueryCacheAsync(CancellationToken cancellationToken)
 		{
 			IQueryCache queryCache = session.Factory.GetQueryCache(cacheRegion);
 
@@ -790,7 +793,7 @@ namespace NHibernate.Impl
 			if (result == null)
 			{
 				log.Debug("Cache miss for multi query");
-				return DoListAsync()
+				return DoListAsync(cancellationToken)
 					.ContinueWith<IList>(task =>
 					{
 						var list = task.Result;

@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Threading;
 using System.Threading.Tasks;
 using NHibernate.Criterion;
 using NHibernate.Transform;
@@ -13,7 +14,7 @@ namespace NHibernate
 		/// <summary>
 		/// Asynchronously get all the results
 		/// </summary>
-		Task<IList> ListAsync();
+		Task<IList> ListAsync(CancellationToken cancellationToken);
 
 		/// <summary>
 		/// Get all the results

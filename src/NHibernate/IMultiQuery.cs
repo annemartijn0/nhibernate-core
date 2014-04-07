@@ -1,5 +1,6 @@
 using System;
 using System.Collections;
+using System.Threading;
 using System.Threading.Tasks;
 using NHibernate.Transform;
 using NHibernate.Type;
@@ -17,7 +18,8 @@ namespace NHibernate
 		/// <remarks>
 		/// Result of <see cref="Task"/>: the result is a IList of IList.
 		/// </remarks>
-		Task<IList> ListAsync();
+		/// <param name="cancellationToken">Token to cancel the request.</param>
+		Task<IList> ListAsync(CancellationToken cancellationToken);
 
 		/// <summary>
 		/// Get all the results

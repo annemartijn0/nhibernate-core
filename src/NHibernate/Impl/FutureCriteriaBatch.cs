@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace NHibernate.Impl
@@ -20,9 +21,9 @@ namespace NHibernate.Impl
 			multiApproach.Add(resultType, query);
 		}
 
-		protected override Task<IList> GetResultsFromAsync(IMultiCriteria multiApproach)
+		protected override Task<IList> GetResultsFromAsync(IMultiCriteria multiApproach, CancellationToken cancellationToken)
 		{
-			return multiApproach.ListAsync();
+			return multiApproach.ListAsync(cancellationToken);
 		}
 
 		protected override IList GetResultsFrom(IMultiCriteria multiApproach)

@@ -43,7 +43,7 @@ namespace NHibernate.Driver
 			get { return sqlString; }
 		}
 
-		public virtual Task<DbDataReader> GetReaderAsync(int? commandTimeout)
+		public virtual Task<DbDataReader> GetReaderAsync(int? commandTimeout, CancellationToken cancellationToken)
 		{
 			var batcher = Session.Batcher;
 			SqlType[] sqlTypes = Commands.SelectMany(c => c.ParameterTypes).ToArray();
@@ -56,9 +56,9 @@ namespace NHibernate.Driver
 			log.Info(command.CommandText);
 			BindParameters(command);
 			command.Connection = Session.Connection;
-			return command.ExecuteReaderAsync(CancellationToken.None)
+			return command.ExecuteReaderAsync(cancellationToken)
 				.ContinueWith<DbDataReader>(task =>
-					new BatcherDataReaderWrapper(batcher, command, task.Result));
+					new BatcherDataReaderWrapper(batcher, command, task.Result), cancellationToken);
 		}
 
 		public virtual DbDataReader GetReader(int? commandTimeout)

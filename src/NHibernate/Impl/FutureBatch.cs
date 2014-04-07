@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace NHibernate.Impl
@@ -22,23 +23,6 @@ namespace NHibernate.Impl
 			this.session = session;
 		}
 
-		public bool ResultsAsyncIsSet
-		{
-			get { return resultsAsync != null; }
-		}
-
-		public Task<IList> ResultsAsync
-		{
-			get
-			{
-				if (resultsAsync == null)
-				{
-					GetResultsAsync();
-				}
-				return resultsAsync;
-			}
-		}
-
 		public IList Results
 		{
 			get
@@ -49,6 +33,39 @@ namespace NHibernate.Impl
 				}
 				return results;
 			}
+		}
+
+		private static Task<IList> CanceledTask
+		{
+			get
+			{
+				var taskCompletionSource = new TaskCompletionSource<IList>();
+				taskCompletionSource.SetCanceled();
+				return taskCompletionSource.Task;
+			}
+		}
+
+		private Task<IList> ResultsFromTaskCompletionSource
+		{
+			get
+			{
+				var taskCompletionSource = new TaskCompletionSource<IList>();
+				taskCompletionSource.SetResult(results);
+				return taskCompletionSource.Task;
+			}
+		}
+
+		public Task<IList> ResultsAsync(CancellationToken cancellationToken)
+		{
+			if (results != null)
+			{
+				return cancellationToken.IsCancellationRequested
+					? CanceledTask
+					: ResultsFromTaskCompletionSource;
+			}
+
+			GetResultsAsync(cancellationToken);
+			return resultsAsync;
 		}
 
 		public void Add<TResult>(TQueryApproach query)
@@ -76,37 +93,36 @@ namespace NHibernate.Impl
 			return new FutureValue<TResult>(() => GetCurrentResult<TResult>(currentIndex));
 		}
 
-		public Task<IEnumerable<TResult>> GetEnumeratorAsync<TResult>()
-		{
-			int currentIndex = index;
-			return GetCurrentResultAsync<TResult>(currentIndex);
-		}
-
 		public IEnumerable<TResult> GetEnumerator<TResult>()
 		{
 			int currentIndex = index;
-			return new DelayedEnumerator<TResult>(() => GetCurrentResult<TResult>(currentIndex));
+			return new DelayedEnumerator<TResult>(
+				() => GetCurrentResult<TResult>(currentIndex),
+				cancellationToken => GetCurrentResultAsync<TResult>(currentIndex, cancellationToken));
 		}
 
-		private void GetResultsAsync()
+		private void GetResultsAsync(CancellationToken cancellationToken)
 		{
 			var multiApproach = CreateMultiApproach(isCacheable, cacheRegion);
 			for (int i = 0; i < queries.Count; i++)
 			{
 				AddTo(multiApproach, queries[i], resultTypes[i]);
 			}
-			resultsAsync = GetResultsFromAsync(multiApproach)
-				.ContinueWith(task =>
+			resultsAsync = GetResultsFromAsync(multiApproach, cancellationToken);
+
+			resultsAsync.ContinueWith(task =>
+			{
+				try
 				{
-					try
-					{
-						return task.Result;
-					}
-					finally
-					{
-						ClearCurrentFutureBatch();
-					}
-				});
+					results = task.Result;
+					return results;
+				}
+				finally
+				{
+					ClearCurrentFutureBatch();
+				}
+			}, TaskContinuationOptions.NotOnCanceled);
+			resultsAsync.ContinueWith(_ => ClearCurrentFutureBatch(), TaskContinuationOptions.OnlyOnCanceled);
 		}
 
 		private void GetResults()
@@ -120,10 +136,11 @@ namespace NHibernate.Impl
 			ClearCurrentFutureBatch();
 		}
 
-		private Task<IEnumerable<TResult>> GetCurrentResultAsync<TResult>(int currentIndex)
+		private Task<IEnumerable<TResult>> GetCurrentResultAsync<TResult>(int currentIndex, CancellationToken cancellationToken)
 		{
-			return ResultsAsync.ContinueWith(task => 
-				((IList)task.Result[currentIndex]).Cast<TResult>());
+			return ResultsAsync(cancellationToken)
+				.ContinueWith(task =>
+					((IList)task.Result[currentIndex]).Cast<TResult>(), cancellationToken);
 		}
 
 		private IEnumerable<TResult> GetCurrentResult<TResult>(int currentIndex)
@@ -133,7 +150,7 @@ namespace NHibernate.Impl
 
 		protected abstract TMultiApproach CreateMultiApproach(bool isCacheable, string cacheRegion);
 		protected abstract void AddTo(TMultiApproach multiApproach, TQueryApproach query, System.Type resultType);
-		protected abstract Task<IList> GetResultsFromAsync(TMultiApproach multiApproach);
+		protected abstract Task<IList> GetResultsFromAsync(TMultiApproach multiApproach, CancellationToken cancellationToken);
 		protected abstract IList GetResultsFrom(TMultiApproach multiApproach);
 		protected abstract void ClearCurrentFutureBatch();
 		protected abstract bool IsQueryCacheable(TQueryApproach query);

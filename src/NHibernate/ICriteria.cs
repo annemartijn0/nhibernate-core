@@ -301,11 +301,13 @@ namespace NHibernate
 
 		/// <summary>
 		/// Asynchronously get an enumerable that when enumerated will execute
-		/// a batch of queries in a single database roundtrip
+		/// a batch of queries in a single database roundtrip.
+		/// This <see cref="IAwaitableEnumerable{T}"/> has an <see cref="IAwaitableEnumerable{T}.AsTask"/> method
+		/// that will execute the database query asynchronously
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <returns></returns>
-		Task<IEnumerable<T>> FutureAsync<T>();
+		IAwaitableEnumerable<T> FutureAsync<T>();
 
 		/// <summary>
 		/// Get a enumerable that when enumerated will execute

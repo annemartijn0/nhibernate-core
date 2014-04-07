@@ -1,8 +1,8 @@
+using System;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using NHibernate.Criterion;
-using NHibernate.Impl;
-using NHibernate.Test.NHSpecificTest.NH2189;
 using NUnit.Framework;
 
 namespace NHibernate.Test.NHSpecificTest.Futures
@@ -49,14 +49,17 @@ namespace NHibernate.Test.NHSpecificTest.Futures
 		[Test]
 		public void FutureAsyncReturnsPeople()
 		{
+			// Arrange
 			using (var s = sessions.OpenSession())
 			{
 				IgnoreThisTestIfMultipleQueriesArentSupportedByDriver();
 
+				// Act
 				s.CreateCriteria(typeof(Person))
-						.SetMaxResults(5)
 						.FutureAsync<Person>()
+						.AsTask()
 						.ContinueWith(persons5 =>
+							// Assert
 							Assert.That(3, Is.EqualTo(persons5.Result.Count()))).Wait();
 			}
 		}
@@ -64,33 +67,12 @@ namespace NHibernate.Test.NHSpecificTest.Futures
 		[Test]
 		public void FutureAsyncReturnsPeopleLimitOneAndTwo()
 		{
+			// Arrange
 			using (var s = sessions.OpenSession())
 			{
 				IgnoreThisTestIfMultipleQueriesArentSupportedByDriver();
 
-				s.CreateCriteria(typeof(Person))
-					.SetMaxResults(1)
-					.FutureAsync<Person>()
-					.ContinueWith(persons1 =>
-					{
-						Assert.That(1, Is.EqualTo(persons1.Result.Count()));
-
-						s.CreateCriteria(typeof(Person))
-							.SetMaxResults(2)
-							.FutureAsync<Person>()
-							.ContinueWith(persons2 =>
-								Assert.That(2, Is.EqualTo(persons2.Result.Count()))).Wait();
-					}).Wait();
-			}
-		}
-
-		[Test]
-		public void FutureAsyncReturnsPeopleLimitOneAndTwoParallel()
-		{
-			using (var s = sessions.OpenSession())
-			{
-				IgnoreThisTestIfMultipleQueriesArentSupportedByDriver();
-
+				// Act
 				var persons1 = s.CreateCriteria(typeof(Person))
 					.SetMaxResults(1)
 					.FutureAsync<Person>();
@@ -99,112 +81,179 @@ namespace NHibernate.Test.NHSpecificTest.Futures
 					.SetMaxResults(2)
 					.FutureAsync<Person>();
 
-				Task.Factory.ContinueWhenAll(new Task[] { persons1, persons2 }, _ =>
-				{
-					Assert.That(1, Is.EqualTo(persons1.Result.Count()));
-					Assert.That(2, Is.EqualTo(persons2.Result.Count()));
-				}).Wait();
+				var persons3 = s.CreateCriteria(typeof(Person))
+					.SetMaxResults(2)
+					.FutureAsync<Person>();
+
+				// Assert
+				persons1.AsTask().ContinueWith(task =>
+					Assert.That(1, Is.EqualTo(task.Result.Count()))).Wait();
+
+				persons2.AsTask().ContinueWith(task =>
+					Assert.That(2, Is.EqualTo(task.Result.Count()))).Wait();
+
+				persons3.AsTask().ContinueWith(task =>
+					Assert.That(2, Is.EqualTo(task.Result.Count()))).Wait();
 			}
 		}
 
 		[Test]
-		public void CanUseFutureCriteriaAsync()
+		public void FutureAsyncReturnsPeopleLimitOneAndTwoParallel()
 		{
+			// Arrange
 			using (var s = sessions.OpenSession())
 			{
 				IgnoreThisTestIfMultipleQueriesArentSupportedByDriver();
 
-				s.CreateCriteria(typeof(Person))
-					.SetMaxResults(10)
+				// Act
+				var persons1Task = s.CreateCriteria(typeof(Person))
+					.SetMaxResults(1)
 					.FutureAsync<Person>()
-					.ContinueWith(persons10 =>
+					.AsTask();
+
+				var persons2Task = s.CreateCriteria(typeof(Person))
+					.SetMaxResults(2)
+					.FutureAsync<Person>()
+					.AsTask();
+
+				Task.Factory.ContinueWhenAll(new Task[] { persons1Task, persons2Task }, _ =>
 				{
-					s.CreateCriteria(typeof(Person))
-					.SetMaxResults(5)
-					.FutureAsync<Person>()
-					.ContinueWith(persons5 =>
-					{
-						using (var logSpy = new SqlLogSpy())
-						{
-							foreach (var person in persons5.Result)
-							{
-
-							}
-
-							foreach (var person in persons10.Result)
-							{
-
-							}
-
-							var events = logSpy.Appender.GetEvents();
-							Assert.AreEqual(1, events.Length);
-						}
-					}).Wait();
+					// Assert
+					Assert.That(1, Is.EqualTo(persons1Task.Result.Count()));
+					Assert.That(2, Is.EqualTo(persons2Task.Result.Count()));
 				}).Wait();
-			}
-		}
-
-		[Test]
-		public void TwoFutureAsyncssRunInTwoRoundTrips()
-		{
-			using (var s = sessions.OpenSession())
-			{
-				IgnoreThisTestIfMultipleQueriesArentSupportedByDriver();
-
-				using (var logSpy = new SqlLogSpy())
-				{
-					s.CreateCriteria(typeof(Person))
-						.SetMaxResults(10)
-						.FutureAsync<Person>()
-						.ContinueWith(persons10 =>
-						{
-							foreach (var person in persons10.Result) { } // fire first future round-trip
-						}).Wait();
-
-					s.CreateCriteria(typeof(Person))
-						.SetMaxResults(5)
-						.FutureAsync<Person>()
-						.ContinueWith(persons5 =>
-						{
-							foreach (var person in persons5.Result) { } // fire second future round-trip
-						}).Wait();
-
-					var events = logSpy.Appender.GetEvents();
-					Assert.AreEqual(2, events.Length);
-				}
 			}
 		}
 
 		[Test]
 		public void CanCombineSingleFutureValueWithEnumerableFutures()
 		{
+			// Assign
 			using (var s = sessions.OpenSession())
 			{
 				IgnoreThisTestIfMultipleQueriesArentSupportedByDriver();
 
-				var persons = s.CreateCriteria(typeof(Person))
-					.SetMaxResults(10)
+				// Act
+				var persons1 = s.CreateCriteria(typeof(Person))
+					.SetMaxResults(1)
+					.FutureAsync<Person>();
+
+				var persons2 = s.CreateCriteria(typeof(Person))
+					.SetMaxResults(2)
 					.FutureAsync<Person>();
 
 				var personCount = s.CreateCriteria(typeof(Person))
 					.SetProjection(Projections.RowCount())
 					.FutureValue<int>();
 
+				// Assert
+				persons1.AsTask().ContinueWith(task =>
+					Assert.That(1, Is.EqualTo(1))).Wait();
+
+				Assert.That(personCount.Value, Is.EqualTo(3));
+
+				persons2.AsTask().ContinueWith(task =>
+					Assert.That(2, Is.EqualTo(2))).Wait();
+			}
+		}
+
+		[Test]
+		public void CombineFutureAsyncAndNormalFuture()
+		{
+			// Arrange
+			using (var s = sessions.OpenSession())
+			{
+				IgnoreThisTestIfMultipleQueriesArentSupportedByDriver();
+
+				// Act
+				var persons2 = s.CreateCriteria(typeof(Person))
+					.SetMaxResults(2)
+					.FutureAsync<Person>();
+				var persons3 = s.CreateCriteria(typeof(Person))
+					.SetMaxResults(3)
+					.Future<Person>();
+
+				// Assert
+				Assert.That(2, Is.EqualTo(persons2.AsTask().Result.Count())); // fire first future round-trip
+				Assert.That(3, Is.EqualTo(persons3.Count())); // fire second future round-trip
+			}
+		}
+
+		[Test]
+		public void TwoFutureAsyncssRunInTwoRoundTrips()
+		{
+			// Arrange
+			using (var s = sessions.OpenSession())
+			{
+				IgnoreThisTestIfMultipleQueriesArentSupportedByDriver();
+
 				using (var logSpy = new SqlLogSpy())
 				{
-					int count = personCount.Value;
+					// Act
+					var persons2 = s.CreateCriteria(typeof(Person))
+						.SetMaxResults(2)
+						.FutureAsync<Person>();
 
-					persons.ContinueWith(_ =>
-					{
-						foreach (var person in persons.Result)
-						{
+					// Assert
+					Assert.That(2, Is.EqualTo(persons2.AsTask().Result.Count())); // fire first future round-trip
 
-						}
-					}).Wait();
-					
-					var events = logSpy.Appender.GetEvents();
-					Assert.AreEqual(1, events.Length);
+					// Act
+					var persons3 = s.CreateCriteria(typeof(Person))
+						.SetMaxResults(3)
+						.FutureAsync<Person>();
+
+					// Assert
+					Assert.That(3, Is.EqualTo(persons3.AsTask().Result.Count())); // fire second future round-trip
 				}
+			}
+		}
+
+		[Test]
+		[ExpectedException(typeof(AggregateException))]
+		public void IAwaitableEnumerable_AsTask_ShouldReturnCanceledTaskWhenPassedCanceledToken()
+		{
+			// Arrange
+			var cancellationTokenSource = new CancellationTokenSource();
+			cancellationTokenSource.Cancel();
+			Task result;
+
+			using (ISession session = OpenSession())
+			{
+				// Act
+				result = session.CreateCriteria<Person>()
+					.FutureAsync<Person>()
+					.AsTask(cancellationTokenSource.Token);
+			}
+
+			// Assert
+			Assert.That(result.IsCanceled);
+			result.Wait();
+		}
+
+		[Test]
+		public void IAwaitableEnumerable_AsTask_ShouldThrowExceptionWhenCancellationTokenIsCanceled()
+		{
+			// Arrange
+			var cancellationTokenSource = new CancellationTokenSource();
+			Task task;
+			using (ISession session = OpenSession())
+			{
+				// Act
+				task = session.CreateCriteria<Person>()
+					.FutureAsync<Person>().AsTask(cancellationTokenSource.Token);
+
+				cancellationTokenSource.Cancel();
+			}
+
+			try
+			{
+				task.Wait();
+			}
+			catch (AggregateException aggregateException)
+			{
+				// Assert
+				Assert.That(aggregateException.InnerExceptions.Count, Is.EqualTo(1));
+				Assert.That(aggregateException.InnerExceptions[0], Is.TypeOf(typeof(TaskCanceledException)));
 			}
 		}
 	}

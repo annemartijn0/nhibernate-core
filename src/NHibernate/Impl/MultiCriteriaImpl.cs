@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Data.Common;
 using System.Diagnostics;
+using System.Threading;
 using System.Threading.Tasks;
 using NHibernate.Cache;
 using NHibernate.Criterion;
@@ -61,7 +62,7 @@ namespace NHibernate.Impl
 			}
 		}
 
-		public Task<IList> ListAsync()
+		public Task<IList> ListAsync(CancellationToken cancellationToken)
 		{
 			using (new SessionIdLoggingContext(session.SessionId))
 			{
@@ -74,11 +75,11 @@ namespace NHibernate.Impl
 
 				if (cacheable)
 				{
-					criteriaResultsAsync = ListUsingQueryCacheAsync();
+					criteriaResultsAsync = ListUsingQueryCacheAsync(cancellationToken);
 				}
 				else
 				{
-					criteriaResultsAsync = ListIgnoreQueryCacheAsync();
+					criteriaResultsAsync = ListIgnoreQueryCacheAsync(cancellationToken);
 				}
 
 				return criteriaResultsAsync;
@@ -121,7 +122,7 @@ namespace NHibernate.Impl
 			}
 		}
 
-		private Task<IList> ListUsingQueryCacheAsync()
+		private Task<IList> ListUsingQueryCacheAsync(CancellationToken cancellationToken)
 		{
 			IQueryCache queryCache = session.Factory.GetQueryCache(cacheRegion);
 
@@ -155,7 +156,7 @@ namespace NHibernate.Impl
 			if (result == null)
 			{
 				log.Debug("Cache miss for multi criteria query");
-				return DoListAsync()
+				return DoListAsync(cancellationToken)
 					.ContinueWith(task =>
 					{
 						var list = task.Result;
@@ -166,7 +167,7 @@ namespace NHibernate.Impl
 							session);
 
 						return list;
-					});
+					}, cancellationToken);
 			}
 
 			var taskCompletionSource = new TaskCompletionSource<IList>();
@@ -216,10 +217,10 @@ namespace NHibernate.Impl
 			return GetResultList(result);
 		}
 
-		private Task<IList> ListIgnoreQueryCacheAsync()
+		private Task<IList> ListIgnoreQueryCacheAsync(CancellationToken cancellationToken)
 		{
-			return DoListAsync()
-				.ContinueWith(task => GetResultList(task.Result));
+			return DoListAsync(cancellationToken)
+				.ContinueWith(task => GetResultList(task.Result), cancellationToken);
 		}
 
 		private IList ListIgnoreQueryCache()
@@ -261,10 +262,10 @@ namespace NHibernate.Impl
 			return resultCollections;
 		}
 
-		private Task<IList> DoListAsync()
+		private Task<IList> DoListAsync(CancellationToken cancellationToken)
 		{
 			List<IList> results = new List<IList>();
-			return GetResultsFromDatabaseAsync(results)
+			return GetResultsFromDatabaseAsync(results, cancellationToken)
 				.ContinueWith<IList>(_ => results);
 		}
 
@@ -288,13 +289,13 @@ namespace NHibernate.Impl
 			}
 		}
 
-		private Task GetResultsFromDatabaseAsync(IList results)
+		private Task GetResultsFromDatabaseAsync(IList results, CancellationToken cancellationToken)
 		{
 			bool statsEnabled = session.Factory.Statistics.IsStatisticsEnabled;
 			var stopWatch = StartStopWatchGetResultsFromDatabase(statsEnabled);
 			int rowCount = 0;
 
-			return resultSetsCommand.GetReaderAsync(null)
+			return resultSetsCommand.GetReaderAsync(null, cancellationToken)
 				.ContinueWith(task =>
 				{
 					try
@@ -312,7 +313,7 @@ namespace NHibernate.Impl
 						throw ADOExceptionHelper.Convert(session.Factory.SQLExceptionConverter, sqle, "Failed to execute multi criteria", resultSetsCommand.Sql);
 					}
 					StopStopwatchGetResultsFromDatabase(statsEnabled, stopWatch, rowCount);
-				});
+				}, cancellationToken);
 		}
 
 		private void GetResultsFromDatabase(IList results)

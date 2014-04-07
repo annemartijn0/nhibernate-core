@@ -236,6 +236,7 @@
     <Compile Include="Hql\StringQueryExpression.cs" />
     <Compile Include="Hql\Ast\ANTLR\Tree\ComponentJoin.cs" />
     <Compile Include="Hql\ParserHelper.cs" />
+    <Compile Include="IAwaitableEnumerable.cs" />
     <Compile Include="ICriteria.cs" />
     <Compile Include="IDatabinder.cs" />
     <Compile Include="Id\Assigned.cs" />
