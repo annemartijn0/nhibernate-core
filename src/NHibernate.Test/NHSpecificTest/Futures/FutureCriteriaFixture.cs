@@ -1,5 +1,6 @@
 using NHibernate.Criterion;
 using NHibernate.Impl;
+using NHibernate.Util;
 using NUnit.Framework;
 
 namespace NHibernate.Test.NHSpecificTest.Futures
@@ -7,6 +8,20 @@ namespace NHibernate.Test.NHSpecificTest.Futures
     [TestFixture]
     public class FutureCriteriaFixture : FutureFixture
     {
+		[Test]
+		public void FutureShouldReturn_AwaitableEnumerableWrapper_IfNotSupportsMultipleQueries()
+		{
+			using (var s = sessions.OpenSession())
+			{
+				IgnoreThisTestIfMultipleQueriesAreSupportedByDriver();
+
+				var persons = s.CreateCriteria(typeof(Person))
+					.Future<Person>();
+
+				Assert.That(persons, Is.TypeOf(typeof(AwaitableEnumerableWrapper<Person>)));
+			}
+		}
+
         [Test]
         public void CanUseFutureCriteria()
         {

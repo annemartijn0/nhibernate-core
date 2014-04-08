@@ -18,6 +18,13 @@ namespace NHibernate.Test.NHSpecificTest.Futures
 			get { return "NHibernate.Test"; }
 		}
 
+		protected void IgnoreThisTestIfMultipleQueriesAreSupportedByDriver()
+		{
+			var driver = sessions.ConnectionProvider.Driver;
+			if (driver.SupportsMultipleQueries)
+				Assert.Ignore("Driver {0} does not support multi-queries", driver.GetType().FullName);
+		}
+
 		protected void IgnoreThisTestIfMultipleQueriesArentSupportedByDriver()
 		{
 			var driver = sessions.ConnectionProvider.Driver;
