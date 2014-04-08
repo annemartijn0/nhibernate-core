@@ -158,6 +158,39 @@ namespace NHibernate.Test.NHSpecificTest.Futures
 		}
 
 		[Test]
+		public void CanCombineFutureValueAsyncWithEnumerableFutures()
+		{
+			// Assign
+			using (var s = sessions.OpenSession())
+			{
+				IgnoreThisTestIfMultipleQueriesArentSupportedByDriver();
+
+				// Act
+				var persons1 = s.CreateCriteria(typeof(Person))
+					.SetMaxResults(1)
+					.Future<Person>();
+
+				var persons2 = s.CreateCriteria(typeof(Person))
+					.SetMaxResults(2)
+					.Future<Person>();
+
+				var personCount = s.CreateCriteria(typeof(Person))
+					.SetProjection(Projections.RowCount())
+					.FutureValue<int>();
+
+				// Assert
+				personCount.ValueAsync().ContinueWith(task =>
+					Assert.That(task.Result, Is.EqualTo(3))).Wait();
+
+				persons1.AsTask().ContinueWith(task =>
+					Assert.That(1, Is.EqualTo(1))).Wait();
+
+				persons2.AsTask().ContinueWith(task =>
+					Assert.That(2, Is.EqualTo(2))).Wait();
+			}
+		}
+
+		[Test]
 		public void CombineFutureAsyncAndNormalFuture()
 		{
 			// Arrange
