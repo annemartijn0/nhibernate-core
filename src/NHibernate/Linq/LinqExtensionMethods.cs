@@ -2,6 +2,8 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
+using System.Threading;
+using System.Threading.Tasks;
 using NHibernate.Impl;
 using Remotion.Linq;
 using Remotion.Linq.Parsing.ExpressionTreeVisitors;
@@ -22,7 +24,7 @@ namespace NHibernate.Linq
 
 		public static IQueryable<T> Cacheable<T>(this IQueryable<T> query)
 		{
-			var method = ReflectionHelper.GetMethodDefinition(() => Cacheable<object>(null)).MakeGenericMethod(typeof (T));
+			var method = ReflectionHelper.GetMethodDefinition(() => Cacheable<object>(null)).MakeGenericMethod(typeof(T));
 
 			var callExpression = Expression.Call(method, query.Expression);
 
@@ -31,7 +33,7 @@ namespace NHibernate.Linq
 
 		public static IQueryable<T> CacheMode<T>(this IQueryable<T> query, CacheMode cacheMode)
 		{
-			var method = ReflectionHelper.GetMethodDefinition(() => CacheMode<object>(null, NHibernate.CacheMode.Normal)).MakeGenericMethod(typeof (T));
+			var method = ReflectionHelper.GetMethodDefinition(() => CacheMode<object>(null, NHibernate.CacheMode.Normal)).MakeGenericMethod(typeof(T));
 
 			var callExpression = Expression.Call(method, query.Expression, Expression.Constant(cacheMode));
 
@@ -40,7 +42,7 @@ namespace NHibernate.Linq
 
 		public static IQueryable<T> CacheRegion<T>(this IQueryable<T> query, string region)
 		{
-			var method = ReflectionHelper.GetMethodDefinition(() => CacheRegion<object>(null, null)).MakeGenericMethod(typeof (T));
+			var method = ReflectionHelper.GetMethodDefinition(() => CacheRegion<object>(null, null)).MakeGenericMethod(typeof(T));
 
 			var callExpression = Expression.Call(method, query.Expression, Expression.Constant(region));
 
@@ -63,9 +65,9 @@ namespace NHibernate.Linq
 			if (nhQueryable == null)
 				throw new NotSupportedException("Query needs to be of type QueryableBase<T>");
 
-			var provider = (INhQueryProvider) nhQueryable.Provider;
+			var provider = (INhQueryProvider)nhQueryable.Provider;
 			var future = provider.ExecuteFuture(nhQueryable.Expression);
-			return (IEnumerable<T>) future;
+			return (IEnumerable<T>)future;
 		}
 
 		public static IFutureValue<T> ToFutureValue<T>(this IQueryable<T> query)
@@ -74,14 +76,26 @@ namespace NHibernate.Linq
 			if (nhQueryable == null)
 				throw new NotSupportedException("Query needs to be of type QueryableBase<T>");
 
-			var provider = (INhQueryProvider) nhQueryable.Provider;
+			var provider = (INhQueryProvider)nhQueryable.Provider;
 			var future = provider.ExecuteFuture(nhQueryable.Expression);
-			if (future is IEnumerable<T>)
+			var futureEnumerable = future as IEnumerable<T>;
+			if (futureEnumerable == null)
 			{
-				return new FutureValue<T>(() => ((IEnumerable<T>) future));
+				return (IFutureValue<T>)future;
 			}
+			return new FutureValue<T>(
+					() => ((IEnumerable<T>)future),
+					cancellationToken => FutureAsTask(cancellationToken, futureEnumerable));
+		}
 
-			return (IFutureValue<T>) future;
+		private static Task<IEnumerable<T>> FutureAsTask<T>(CancellationToken cancellationToken, IEnumerable<T> future)
+		{
+			var taskCompletionSource = new TaskCompletionSource<IEnumerable<T>>();
+			if (cancellationToken.IsCancellationRequested)
+				taskCompletionSource.SetCanceled();
+			else
+				taskCompletionSource.SetResult(future);
+			return taskCompletionSource.Task;
 		}
 
 		public static IFutureValue<TResult> ToFutureValue<T, TResult>(this IQueryable<T> query, Expression<Func<IQueryable<T>, TResult>> selector)
@@ -90,13 +104,13 @@ namespace NHibernate.Linq
 			if (nhQueryable == null)
 				throw new NotSupportedException("Query needs to be of type QueryableBase<T>");
 
-			var provider = (INhQueryProvider) query.Provider;
+			var provider = (INhQueryProvider)query.Provider;
 
 			var expression = ReplacingExpressionTreeVisitor.Replace(selector.Parameters.Single(),
 																	query.Expression,
 																	selector.Body);
 
-			return (IFutureValue<TResult>) provider.ExecuteFuture(expression);
+			return (IFutureValue<TResult>)provider.ExecuteFuture(expression);
 		}
 	}
 }

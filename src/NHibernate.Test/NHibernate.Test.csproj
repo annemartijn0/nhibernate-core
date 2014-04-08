@@ -690,6 +690,7 @@
     <Compile Include="NHSpecificTest\BagWithLazyExtraAndFilter\Domain.cs" />
     <Compile Include="NHSpecificTest\BagWithLazyExtraAndFilter\Fixture.cs" />
     <Compile Include="Component\Basic\ComponentWithUniqueConstraintTests.cs" />
+    <Compile Include="NHSpecificTest\Futures\FallbackFixtureAsync.cs" />
     <Compile Include="NHSpecificTest\Futures\FutureAsyncCriteriaFixture.cs" />
     <Compile Include="NHSpecificTest\NH1082\SynchronizationThatThrowsExceptionAtBeforeTransactionCompletion.cs" />
     <Compile Include="NHSpecificTest\NH2756\Fixture.cs" />

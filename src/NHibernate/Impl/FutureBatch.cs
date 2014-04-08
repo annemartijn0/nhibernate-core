@@ -90,7 +90,9 @@ namespace NHibernate.Impl
 		public IFutureValue<TResult> GetFutureValue<TResult>()
 		{
 			int currentIndex = index;
-			return new FutureValue<TResult>(() => GetCurrentResult<TResult>(currentIndex));
+			return new FutureValue<TResult>(
+				() => GetCurrentResult<TResult>(currentIndex),
+				cancellationToken => GetCurrentResultAsync<TResult>(currentIndex, cancellationToken));
 		}
 
 		public IAwaitableEnumerable<TResult> GetEnumerator<TResult>()

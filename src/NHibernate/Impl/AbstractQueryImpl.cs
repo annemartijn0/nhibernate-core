@@ -1,6 +1,8 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Threading;
+using System.Threading.Tasks;
 using NHibernate.Engine;
 using NHibernate.Engine.Query;
 using NHibernate.Hql;
@@ -238,7 +240,7 @@ namespace NHibernate.Impl
 		/// </summary>
 		private string ExpandParameterList(string query, string name, TypedValue typedList, IDictionary<string, TypedValue> namedParamsCopy)
 		{
-			var vals = (IEnumerable) typedList.Value;
+			var vals = (IEnumerable)typedList.Value;
 			var type = typedList.Type;
 
 			var typedValues = (from object value in vals
@@ -250,13 +252,13 @@ namespace NHibernate.Impl
 				namedParamsCopy[name] = typedValues[0];
 				return query;
 			}
-			
+
 			var isJpaPositionalParam = parameterMetadata.GetNamedParameterDescriptor(name).JpaStyle;
 			var aliases = new string[typedValues.Count];
 			for (var index = 0; index < typedValues.Count; index++)
 			{
 				var value = typedValues[index];
-				var alias =  (isJpaPositionalParam ? 'x' + name : name + StringHelper.Underscore) + index + StringHelper.Underscore;
+				var alias = (isJpaPositionalParam ? 'x' + name : name + StringHelper.Underscore) + index + StringHelper.Underscore;
 				namedParamsCopy[alias] = value;
 				aliases[index] = ParserHelper.HqlVariablePrefix + alias;
 			}
@@ -327,7 +329,7 @@ namespace NHibernate.Impl
 
 		public IQuery SetParameter<T>(string name, T val)
 		{
-			return SetParameter(name, val, parameterMetadata.GetNamedParameterExpectedType(name) ?? GuessType(typeof (T)));
+			return SetParameter(name, val, parameterMetadata.GetNamedParameterExpectedType(name) ?? GuessType(typeof(T)));
 		}
 
 		public IQuery SetParameter(string name, object val)
@@ -648,7 +650,7 @@ namespace NHibernate.Impl
 				}
 				if (obj is IEnumerable && !(obj is string))
 				{
-					SetParameterList(namedParam, (IEnumerable) obj);
+					SetParameterList(namedParam, (IEnumerable)obj);
 				}
 				else
 				{
@@ -672,7 +674,7 @@ namespace NHibernate.Impl
 					var obj = getter.Get(bean);
 					if (typeof(IEnumerable).IsAssignableFrom(retType) && retType != typeof(string))
 					{
-						SetParameterList(namedParam, (IEnumerable) obj);
+						SetParameterList(namedParam, (IEnumerable)obj);
 					}
 					else
 					{
@@ -698,9 +700,9 @@ namespace NHibernate.Impl
 			}
 			if (type == null)
 			{
-				throw new ArgumentNullException("type","Can't determine the type of parameter-list elements.");
+				throw new ArgumentNullException("type", "Can't determine the type of parameter-list elements.");
 			}
-			if(!vals.Any())
+			if (!vals.Any())
 			{
 				throw new QueryException(string.Format("An empty parameter-list generates wrong SQL; parameter name '{0}'", name));
 			}
@@ -766,13 +768,13 @@ namespace NHibernate.Impl
 		{
 			get { return session.Factory.GetReturnAliases(queryString); }
 		}
-		
+
 		// TODO: maybe call it RowSelection ?
 		public RowSelection Selection
 		{
 			get { return selection; }
 		}
-		
+
 		public IQuery SetMaxResults(int maxResults)
 		{
 			selection.MaxRows = maxResults;
@@ -897,11 +899,21 @@ namespace NHibernate.Impl
 		{
 			if (!session.Factory.ConnectionProvider.Driver.SupportsMultipleQueries)
 			{
-				return new FutureValue<T>(List<T>);
+				return new FutureValue<T>(List<T>, ListAsTask<T>);
 			}
-			
+
 			session.FutureQueryBatch.Add<T>(this);
 			return session.FutureQueryBatch.GetFutureValue<T>();
+		}
+
+		private Task<IEnumerable<T>> ListAsTask<T>(CancellationToken cancellationToken)
+		{
+			var taskCompletionSource = new TaskCompletionSource<IEnumerable<T>>();
+			if (cancellationToken.IsCancellationRequested)
+				taskCompletionSource.SetCanceled();
+			else
+				taskCompletionSource.SetResult(List<T>());
+			return taskCompletionSource.Task;
 		}
 
 		/// <summary> Override the current session cache mode, just for this query.
@@ -921,7 +933,7 @@ namespace NHibernate.Impl
 			return this;
 		}
 
-		protected internal abstract IDictionary<string, LockMode> LockModes { get;}
+		protected internal abstract IDictionary<string, LockMode> LockModes { get; }
 
 		#endregion
 
