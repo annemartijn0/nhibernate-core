@@ -56,7 +56,7 @@ namespace NHibernate.Test.NHSpecificTest.Futures
 
 				// Act
 				s.CreateCriteria(typeof(Person))
-						.FutureAsync<Person>()
+						.Future<Person>()
 						.AsTask()
 						.ContinueWith(persons5 =>
 							// Assert
@@ -75,15 +75,15 @@ namespace NHibernate.Test.NHSpecificTest.Futures
 				// Act
 				var persons1 = s.CreateCriteria(typeof(Person))
 					.SetMaxResults(1)
-					.FutureAsync<Person>();
+					.Future<Person>();
 
 				var persons2 = s.CreateCriteria(typeof(Person))
 					.SetMaxResults(2)
-					.FutureAsync<Person>();
+					.Future<Person>();
 
 				var persons3 = s.CreateCriteria(typeof(Person))
 					.SetMaxResults(2)
-					.FutureAsync<Person>();
+					.Future<Person>();
 
 				// Assert
 				persons1.AsTask().ContinueWith(task =>
@@ -108,12 +108,12 @@ namespace NHibernate.Test.NHSpecificTest.Futures
 				// Act
 				var persons1Task = s.CreateCriteria(typeof(Person))
 					.SetMaxResults(1)
-					.FutureAsync<Person>()
+					.Future<Person>()
 					.AsTask();
 
 				var persons2Task = s.CreateCriteria(typeof(Person))
 					.SetMaxResults(2)
-					.FutureAsync<Person>()
+					.Future<Person>()
 					.AsTask();
 
 				Task.Factory.ContinueWhenAll(new Task[] { persons1Task, persons2Task }, _ =>
@@ -136,11 +136,11 @@ namespace NHibernate.Test.NHSpecificTest.Futures
 				// Act
 				var persons1 = s.CreateCriteria(typeof(Person))
 					.SetMaxResults(1)
-					.FutureAsync<Person>();
+					.Future<Person>();
 
 				var persons2 = s.CreateCriteria(typeof(Person))
 					.SetMaxResults(2)
-					.FutureAsync<Person>();
+					.Future<Person>();
 
 				var personCount = s.CreateCriteria(typeof(Person))
 					.SetProjection(Projections.RowCount())
@@ -168,7 +168,7 @@ namespace NHibernate.Test.NHSpecificTest.Futures
 				// Act
 				var persons2 = s.CreateCriteria(typeof(Person))
 					.SetMaxResults(2)
-					.FutureAsync<Person>();
+					.Future<Person>();
 				var persons3 = s.CreateCriteria(typeof(Person))
 					.SetMaxResults(3)
 					.Future<Person>();
@@ -191,7 +191,7 @@ namespace NHibernate.Test.NHSpecificTest.Futures
 				// Act
 				var persons2 = s.CreateCriteria(typeof(Person))
 					.SetMaxResults(2)
-					.FutureAsync<Person>();
+					.Future<Person>();
 				var persons3 = s.CreateCriteria(typeof(Person))
 					.SetMaxResults(3)
 					.Future<Person>();
@@ -221,7 +221,7 @@ namespace NHibernate.Test.NHSpecificTest.Futures
 					// Act
 					var persons2 = s.CreateCriteria(typeof(Person))
 						.SetMaxResults(2)
-						.FutureAsync<Person>();
+						.Future<Person>();
 
 					// Assert
 					Assert.That(2, Is.EqualTo(persons2.AsTask().Result.Count())); // fire first future round-trip
@@ -229,7 +229,7 @@ namespace NHibernate.Test.NHSpecificTest.Futures
 					// Act
 					var persons3 = s.CreateCriteria(typeof(Person))
 						.SetMaxResults(3)
-						.FutureAsync<Person>();
+						.Future<Person>();
 
 					// Assert
 					Assert.That(3, Is.EqualTo(persons3.AsTask().Result.Count())); // fire second future round-trip
@@ -250,7 +250,7 @@ namespace NHibernate.Test.NHSpecificTest.Futures
 			{
 				// Act
 				result = session.CreateCriteria<Person>()
-					.FutureAsync<Person>()
+					.Future<Person>()
 					.AsTask(cancellationTokenSource.Token);
 			}
 
@@ -269,7 +269,7 @@ namespace NHibernate.Test.NHSpecificTest.Futures
 			{
 				// Act
 				task = session.CreateCriteria<Person>()
-					.FutureAsync<Person>().AsTask(cancellationTokenSource.Token);
+					.Future<Person>().AsTask(cancellationTokenSource.Token);
 
 				cancellationTokenSource.Cancel();
 			}

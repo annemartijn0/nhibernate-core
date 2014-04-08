@@ -452,16 +452,11 @@ namespace NHibernate.Impl
 			return session.FutureCriteriaBatch.GetFutureValue<T>();
 		}
 
-		public IAwaitableEnumerable<T> FutureAsync<T>()
-		{
-			return (IAwaitableEnumerable<T>)Future<T>();
-		}
-
-		public IEnumerable<T> Future<T>()
+		public IAwaitableEnumerable<T> Future<T>()
 		{
 			if (!session.Factory.ConnectionProvider.Driver.SupportsMultipleQueries)
 			{
-				return List<T>();
+				return new AwaitableEnumerableWrapper<T>(List<T>());
 			}
 
 			session.FutureCriteriaBatch.Add<T>(this);
@@ -835,12 +830,7 @@ namespace NHibernate.Impl
 				return root.FutureValue<T>();
 			}
 
-			public IAwaitableEnumerable<T> FutureAsync<T>()
-			{
-				return root.FutureAsync<T>();
-			}
-
-			public IEnumerable<T> Future<T>()
+			public IAwaitableEnumerable<T> Future<T>()
 			{
 				return root.Future<T>();
 			}
