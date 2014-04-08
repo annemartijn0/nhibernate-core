@@ -180,6 +180,35 @@ namespace NHibernate.Test.NHSpecificTest.Futures
 		}
 
 		[Test]
+		public void CombinedFutureAsyncAndNormalFutureDoOneRoundTrip()
+		{
+			// Arrange
+			using (var s = sessions.OpenSession())
+			using (var logSpy = new SqlLogSpy())
+			{
+				IgnoreThisTestIfMultipleQueriesArentSupportedByDriver();
+
+				// Act
+				var persons2 = s.CreateCriteria(typeof(Person))
+					.SetMaxResults(2)
+					.FutureAsync<Person>();
+				var persons3 = s.CreateCriteria(typeof(Person))
+					.SetMaxResults(3)
+					.Future<Person>();
+
+				foreach (var p in persons3) { }
+				persons2.AsTask().ContinueWith(task =>
+				{
+					foreach (var p in task.Result) { }
+
+					// Assert
+					var events = logSpy.Appender.GetEvents();
+					Assert.That(events.Length, Is.EqualTo(1));
+				}).Wait();
+			}
+		}
+
+		[Test]
 		public void TwoFutureAsyncssRunInTwoRoundTrips()
 		{
 			// Arrange
