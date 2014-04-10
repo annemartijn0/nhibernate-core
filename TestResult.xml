@@ -1,62 +1,44 @@
 ﻿<?xml version="1.0" encoding="utf-8" standalone="no"?>
 <!--This file represents the results of running a test suite-->
-<test-results name="C:\Users\Annemartijn\Documents\GitHub\nhibernate-core\NHibernate.nunit" total="1" errors="1" failures="0" not-run="0" inconclusive="0" ignored="0" skipped="0" invalid="0" date="2014-04-02" time="14:57:18">
+<test-results name="C:\Users\Annemartijn\Documents\GitHub\nhibernate-core\NHibernate.nunit" total="1" errors="0" failures="1" not-run="0" inconclusive="0" ignored="0" skipped="0" invalid="0" date="2014-04-10" time="11:55:58">
   <environment nunit-version="2.6.3.13283" clr-version="2.0.50727.5477" os-version="Microsoft Windows NT 6.1.7601 Service Pack 1" platform="Win32NT" cwd="C:\Users\Annemartijn\Documents\GitHub\nhibernate-core" machine-name="ILIANLAPTOPWERK" user="Annemartijn" user-domain="IlianLaptopWerk" />
   <culture-info current-culture="nl-NL" current-uiculture="en-US" />
-  <test-suite type="Test Project" name="C:\Users\Annemartijn\Documents\GitHub\nhibernate-core\NHibernate.nunit" executed="True" result="Failure" success="False" time="9.397" asserts="0">
+  <test-suite type="Test Project" name="C:\Users\Annemartijn\Documents\GitHub\nhibernate-core\NHibernate.nunit" executed="True" result="Failure" success="False" time="70.962" asserts="0">
     <results>
-      <test-suite type="Assembly" name="C:\Users\Annemartijn\Documents\GitHub\nhibernate-core\src\NHibernate.Test\bin\Debug-2.0\NHibernate.Test.dll" executed="True" result="Failure" success="False" time="7.093" asserts="0">
+      <test-suite type="Assembly" name="C:\Users\Annemartijn\Documents\GitHub\nhibernate-core\src\NHibernate.Test\bin\Debug-2.0\NHibernate.Test.dll" executed="True" result="Failure" success="False" time="68.673" asserts="0">
         <results>
-          <test-suite type="Namespace" name="NHibernate" executed="True" result="Failure" success="False" time="7.064" asserts="0">
+          <test-suite type="Namespace" name="NHibernate" executed="True" result="Failure" success="False" time="68.570" asserts="0">
             <results>
-              <test-suite type="Namespace" name="Test" executed="True" result="Failure" success="False" time="7.060" asserts="0">
+              <test-suite type="Namespace" name="Test" executed="True" result="Failure" success="False" time="68.535" asserts="0">
                 <results>
-                  <test-suite type="Namespace" name="NHSpecificTest" executed="True" result="Failure" success="False" time="7.057" asserts="0">
+                  <test-suite type="Namespace" name="Criteria" executed="True" result="Failure" success="False" time="68.497" asserts="0">
                     <results>
-                      <test-suite type="Namespace" name="Futures" executed="True" result="Failure" success="False" time="7.054" asserts="0">
+                      <test-suite type="Namespace" name="Lambda" executed="True" result="Failure" success="False" time="68.465" asserts="0">
                         <results>
-                          <test-suite type="TestFixture" name="FutureAsyncCriteriaFixture" executed="True" result="Failure" success="False" time="7.051" asserts="0">
-                            <results>
-                              <test-case name="NHibernate.Test.NHSpecificTest.Futures.FutureAsyncCriteriaFixture.FutureAsyncReturnPeople" executed="True" result="Error" success="False" time="2.162" asserts="1">
-                                <failure>
-                                  <message><![CDATA[System.AggregateException : One or more errors occurred.
-  ----> System.AggregateException : One or more errors occurred.
-  ----> System.AggregateException : One or more errors occurred.
-  ----> System.AggregateException : One or more errors occurred.
-  ----> System.AggregateException : One or more errors occurred.
-  ----> System.ArgumentException : The value "NHibernate.Test.NHSpecificTest.Futures.Person" is not of type "System.Int32" and cannot be used in this generic collection.
-Parameter name: value]]></message>
-                                  <stack-trace><![CDATA[at System.Threading.Tasks.Task.Wait(Int32 millisecondsTimeout, CancellationToken cancellationToken)
-at System.Threading.Tasks.Task.Wait()
-at NHibernate.Test.NHSpecificTest.Futures.FutureAsyncCriteriaFixture.FutureAsyncReturnPeople() in c:\Users\Annemartijn\Documents\GitHub\nhibernate-core\src\NHibernate.Test\NHSpecificTest\Futures\FutureAsyncCriteriaFixture.cs:line 52
---AggregateException
-at System.Threading.Tasks.Task.Wait(Int32 millisecondsTimeout, CancellationToken cancellationToken)
-at System.Threading.Tasks.Task.Wait()
-at NHibernate.Test.NHSpecificTest.Futures.FutureAsyncCriteriaFixture.<>c__DisplayClass5.<FutureAsyncReturnPeople>b__2(Task`1 persons10) in c:\Users\Annemartijn\Documents\GitHub\nhibernate-core\src\NHibernate.Test\NHSpecificTest\Futures\FutureAsyncCriteriaFixture.cs:line 57
-at System.Threading.Tasks.Task.Execute()
---AggregateException
-at System.Threading.Tasks.Task`1.GetResultCore(Boolean waitCompletionNotification)
-at NHibernate.Test.NHSpecificTest.Futures.FutureAsyncCriteriaFixture.<>c__DisplayClass5.<>c__DisplayClass7.<FutureAsyncReturnPeople>b__3(Task`1 persons5) in c:\Users\Annemartijn\Documents\GitHub\nhibernate-core\src\NHibernate.Test\NHSpecificTest\Futures\FutureAsyncCriteriaFixture.cs:line 63
-at System.Threading.Tasks.Task.Execute()
---AggregateException
-at System.Threading.Tasks.Task`1.GetResultCore(Boolean waitCompletionNotification)
-at NHibernate.Impl.FutureBatch`2.<>c__DisplayClass8`1.<GetCurrentResultAsync>b__7(Task`1 task) in c:\Users\Annemartijn\Documents\GitHub\nhibernate-core\src\NHibernate\Impl\FutureBatch.cs:line 115
-at System.Threading.Tasks.ContinuationResultTaskFromResultTask`2.InnerInvoke()
-at System.Threading.Tasks.Task.Execute()
---AggregateException
-at System.Threading.Tasks.Task`1.GetResultCore(Boolean waitCompletionNotification)
-at NHibernate.Impl.FutureBatch`2.<GetResultsAsync>b__6(Task`1 task) in c:\Users\Annemartijn\Documents\GitHub\nhibernate-core\src\NHibernate\Impl\FutureBatch.cs:line 97
-at System.Threading.Tasks.ContinuationResultTaskFromResultTask`2.InnerInvoke()
-at System.Threading.Tasks.Task.Execute()
---ArgumentException
-at System.ThrowHelper.ThrowWrongValueTypeArgumentException(Object value, Type targetType)
-at System.Collections.Generic.List`1.System.Collections.IList.Add(Object item)
-at NHibernate.Util.ArrayHelper.AddAll(IList to, IList from) in c:\Users\Annemartijn\Documents\GitHub\nhibernate-core\src\NHibernate\Util\ArrayHelper.cs:line 130
-at NHibernate.Impl.MultiCriteriaImpl.GetResultList(IList results) in c:\Users\Annemartijn\Documents\GitHub\nhibernate-core\src\NHibernate\Impl\MultiCriteriaImpl.cs:line 250
-at NHibernate.Impl.MultiCriteriaImpl.<ListIgnoreQueryCacheAsync>b__4(Task`1 task) in c:\Users\Annemartijn\Documents\GitHub\nhibernate-core\src\NHibernate\Impl\MultiCriteriaImpl.cs:line 222
-at System.Threading.Tasks.ContinuationResultTaskFromResultTask`2.InnerInvoke()
-at System.Threading.Tasks.Task.Execute()
+                          <test-suite type="TestFixture" name="IntegrationFixtureAsync" executed="True" result="Error" success="False" time="68.416" asserts="0">
+                            <failure>
+                              <message><![CDATA[SetUp : NHibernate.HibernateException : ExecuteNonQuery requires an open and available Connection. The connection's current state is closed.
+  ----> System.InvalidOperationException : ExecuteNonQuery requires an open and available Connection. The connection's current state is closed.]]></message>
+                              <stack-trace><![CDATA[at NHibernate.Tool.hbm2ddl.SchemaExport.Execute(Action`1 scriptAction, Boolean export, Boolean justDrop) in c:\Users\Annemartijn\Documents\GitHub\nhibernate-core\src\NHibernate\Tool\hbm2ddl\SchemaExport.cs:line 348
+at NHibernate.Tool.hbm2ddl.SchemaExport.Execute(Boolean script, Boolean export, Boolean justDrop) in c:\Users\Annemartijn\Documents\GitHub\nhibernate-core\src\NHibernate\Tool\hbm2ddl\SchemaExport.cs:line 290
+at NHibernate.Tool.hbm2ddl.SchemaExport.Create(Boolean script, Boolean export) in c:\Users\Annemartijn\Documents\GitHub\nhibernate-core\src\NHibernate\Tool\hbm2ddl\SchemaExport.cs:line 105
+at NHibernate.Test.TestCase.CreateSchema() in c:\Users\Annemartijn\Documents\GitHub\nhibernate-core\src\NHibernate.Test\TestCase.cs:line 243
+at NHibernate.Test.TestCase.TestFixtureSetUp() in c:\Users\Annemartijn\Documents\GitHub\nhibernate-core\src\NHibernate.Test\TestCase.cs:line 104
+--InvalidOperationException
+at System.Data.SqlClient.SqlCommand.ValidateCommand(String method, Boolean async)
+at System.Data.SqlClient.SqlCommand.InternalExecuteNonQuery(TaskCompletionSource`1 completion, String methodName, Boolean sendToPipe, Int32 timeout, Boolean asyncWrite)
+at System.Data.SqlClient.SqlCommand.ExecuteNonQuery()
+at NHibernate.Tool.hbm2ddl.SchemaExport.ExecuteSql(DbCommand cmd, String sql) in c:\Users\Annemartijn\Documents\GitHub\nhibernate-core\src\NHibernate\Tool\hbm2ddl\SchemaExport.cs:line 176
+at NHibernate.Tool.hbm2ddl.SchemaExport.Execute(Action`1 scriptAction, Boolean export, Boolean throwOnError, TextWriter exportOutput, DbCommand statement, String sql) in c:\Users\Annemartijn\Documents\GitHub\nhibernate-core\src\NHibernate\Tool\hbm2ddl\SchemaExport.cs:line 161
+at NHibernate.Tool.hbm2ddl.SchemaExport.Execute(Action`1 scriptAction, Boolean export, Boolean justDrop, DbConnection connection, TextWriter exportOutput) in c:\Users\Annemartijn\Documents\GitHub\nhibernate-core\src\NHibernate\Tool\hbm2ddl\SchemaExport.cs:line 242
+at NHibernate.Tool.hbm2ddl.SchemaExport.Execute(Action`1 scriptAction, Boolean export, Boolean justDrop) in c:\Users\Annemartijn\Documents\GitHub\nhibernate-core\src\NHibernate\Tool\hbm2ddl\SchemaExport.cs:line 328
 ]]></stack-trace>
+                            </failure>
+                            <results>
+                              <test-case name="NHibernate.Test.Criteria.Lambda.IntegrationFixtureAsync.StatelessSessionAsync" executed="True" result="Failure" success="False" time="0.000" asserts="0">
+                                <failure>
+                                  <message><![CDATA[TestFixtureSetUp failed in IntegrationFixtureAsync]]></message>
+                                  <stack-trace />
                                 </failure>
                               </test-case>
                             </results>

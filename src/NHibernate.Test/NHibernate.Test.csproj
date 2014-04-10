@@ -206,7 +206,11 @@
     <Compile Include="Criteria\Enrolment.cs" />
     <Compile Include="Criteria\Lambda\CriteriaAssertFixture.cs" />
     <Compile Include="Criteria\Lambda\ExpressionProcessorFixture.cs" />
+    <Compile Include="Criteria\Lambda\FunctionsIntegrationFixtureAsync.cs" />
     <Compile Include="Criteria\Lambda\FunctionsIntegrationFixture.cs" />
+    <Compile Include="Criteria\Lambda\IntegrationFixtureAsync.cs" />
+    <Compile Include="Criteria\Lambda\SimpleIntegrationFixtureAsync.cs" />
+    <Compile Include="Criteria\Lambda\SubQueryIntegrationFixtureAsync.cs" />
     <Compile Include="Criteria\Lambda\SubQueryIntegrationFixture.cs" />
     <Compile Include="Criteria\Lambda\ProjectIntegrationFixture.cs" />
     <Compile Include="Criteria\Lambda\SimpleIntegrationFixture.cs" />

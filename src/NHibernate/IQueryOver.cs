@@ -2,7 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq.Expressions;
-
+using System.Threading.Tasks;
 using NHibernate.Criterion;
 using NHibernate.Criterion.Lambda;
 using NHibernate.SqlCommand;
@@ -43,6 +43,12 @@ namespace NHibernate
 		/// </summary>
 		/// <returns>The list filled with the results.</returns>
 		IList<TRoot> List();
+
+		/// <summary>
+		/// Asynchronously get the results of the root type and fill the <see cref="IList{TRoot}"/>.
+		/// </summary>
+		/// <returns>A <see cref="Task"/> containing a <see cref="IList{TRoot}"/> filled with the results.</returns>
+		Task<IList<TRoot>> ListAsync();
 
 		/// <summary>
 		/// Get the results of the root type and fill the <see cref="IList&lt;T&gt;"/>
