@@ -1,7 +1,8 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Data;using System.Data.Common;
+using System.Data;
+using System.Data.Common;
 using System.Linq.Expressions;
 using System.Runtime.Serialization;
 using System.Security;
@@ -1952,12 +1953,21 @@ namespace NHibernate.Impl
 			var asyncTasks = new Task<IList>[size];
 			for (int i = size - 1; i >= 0; i--)
 			{
-				asyncTasks[i] = (loaders[i].ListAsync(this, cancellationToken));
+				asyncTasks[i] = loaders[i].ListAsync(this, cancellationToken);
 			}
 
 			return Task.Factory
 				.ContinueWhenAll(asyncTasks, tasks =>
-					EndListAsync(results, tasks, sessionIdLoggingContext), cancellationToken);
+				{
+					try
+					{
+						EndListAsync(results, tasks, sessionIdLoggingContext);
+					}
+					finally
+					{
+						sessionIdLoggingContext.Dispose();
+					}
+				}, cancellationToken);
 		}
 
 		private void EndListAsync(IList results, IEnumerable<Task<IList>> tasks, SessionIdLoggingContext sessionIdLoggingContext)
@@ -1972,7 +1982,6 @@ namespace NHibernate.Impl
 				}
 
 				success = true;
-				sessionIdLoggingContext.Dispose();
 			}
 			catch (AggregateException aggregateException)
 			{

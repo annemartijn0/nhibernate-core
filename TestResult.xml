@@ -1,44 +1,33 @@
 ﻿<?xml version="1.0" encoding="utf-8" standalone="no"?>
 <!--This file represents the results of running a test suite-->
-<test-results name="C:\Users\Annemartijn\Documents\GitHub\nhibernate-core\NHibernate.nunit" total="1" errors="0" failures="1" not-run="0" inconclusive="0" ignored="0" skipped="0" invalid="0" date="2014-04-10" time="11:55:58">
+<test-results name="C:\Users\Annemartijn\Documents\GitHub\nhibernate-core\NHibernate.nunit" total="1" errors="1" failures="0" not-run="0" inconclusive="0" ignored="0" skipped="0" invalid="0" date="2014-04-10" time="12:08:26">
   <environment nunit-version="2.6.3.13283" clr-version="2.0.50727.5477" os-version="Microsoft Windows NT 6.1.7601 Service Pack 1" platform="Win32NT" cwd="C:\Users\Annemartijn\Documents\GitHub\nhibernate-core" machine-name="ILIANLAPTOPWERK" user="Annemartijn" user-domain="IlianLaptopWerk" />
   <culture-info current-culture="nl-NL" current-uiculture="en-US" />
-  <test-suite type="Test Project" name="C:\Users\Annemartijn\Documents\GitHub\nhibernate-core\NHibernate.nunit" executed="True" result="Failure" success="False" time="70.962" asserts="0">
+  <test-suite type="Test Project" name="C:\Users\Annemartijn\Documents\GitHub\nhibernate-core\NHibernate.nunit" executed="True" result="Failure" success="False" time="1.831" asserts="0">
     <results>
-      <test-suite type="Assembly" name="C:\Users\Annemartijn\Documents\GitHub\nhibernate-core\src\NHibernate.Test\bin\Debug-2.0\NHibernate.Test.dll" executed="True" result="Failure" success="False" time="68.673" asserts="0">
+      <test-suite type="Assembly" name="C:\Users\Annemartijn\Documents\GitHub\nhibernate-core\src\NHibernate.Test\bin\Debug-2.0\NHibernate.Test.dll" executed="True" result="Failure" success="False" time="0.250" asserts="0">
         <results>
-          <test-suite type="Namespace" name="NHibernate" executed="True" result="Failure" success="False" time="68.570" asserts="0">
+          <test-suite type="Namespace" name="NHibernate" executed="True" result="Failure" success="False" time="0.249" asserts="0">
             <results>
-              <test-suite type="Namespace" name="Test" executed="True" result="Failure" success="False" time="68.535" asserts="0">
+              <test-suite type="Namespace" name="Test" executed="True" result="Failure" success="False" time="0.247" asserts="0">
                 <results>
-                  <test-suite type="Namespace" name="Criteria" executed="True" result="Failure" success="False" time="68.497" asserts="0">
+                  <test-suite type="Namespace" name="Criteria" executed="True" result="Failure" success="False" time="0.242" asserts="0">
                     <results>
-                      <test-suite type="Namespace" name="Lambda" executed="True" result="Failure" success="False" time="68.465" asserts="0">
+                      <test-suite type="Namespace" name="Lambda" executed="True" result="Failure" success="False" time="0.242" asserts="0">
                         <results>
-                          <test-suite type="TestFixture" name="IntegrationFixtureAsync" executed="True" result="Error" success="False" time="68.416" asserts="0">
-                            <failure>
-                              <message><![CDATA[SetUp : NHibernate.HibernateException : ExecuteNonQuery requires an open and available Connection. The connection's current state is closed.
-  ----> System.InvalidOperationException : ExecuteNonQuery requires an open and available Connection. The connection's current state is closed.]]></message>
-                              <stack-trace><![CDATA[at NHibernate.Tool.hbm2ddl.SchemaExport.Execute(Action`1 scriptAction, Boolean export, Boolean justDrop) in c:\Users\Annemartijn\Documents\GitHub\nhibernate-core\src\NHibernate\Tool\hbm2ddl\SchemaExport.cs:line 348
-at NHibernate.Tool.hbm2ddl.SchemaExport.Execute(Boolean script, Boolean export, Boolean justDrop) in c:\Users\Annemartijn\Documents\GitHub\nhibernate-core\src\NHibernate\Tool\hbm2ddl\SchemaExport.cs:line 290
-at NHibernate.Tool.hbm2ddl.SchemaExport.Create(Boolean script, Boolean export) in c:\Users\Annemartijn\Documents\GitHub\nhibernate-core\src\NHibernate\Tool\hbm2ddl\SchemaExport.cs:line 105
-at NHibernate.Test.TestCase.CreateSchema() in c:\Users\Annemartijn\Documents\GitHub\nhibernate-core\src\NHibernate.Test\TestCase.cs:line 243
-at NHibernate.Test.TestCase.TestFixtureSetUp() in c:\Users\Annemartijn\Documents\GitHub\nhibernate-core\src\NHibernate.Test\TestCase.cs:line 104
---InvalidOperationException
-at System.Data.SqlClient.SqlCommand.ValidateCommand(String method, Boolean async)
-at System.Data.SqlClient.SqlCommand.InternalExecuteNonQuery(TaskCompletionSource`1 completion, String methodName, Boolean sendToPipe, Int32 timeout, Boolean asyncWrite)
-at System.Data.SqlClient.SqlCommand.ExecuteNonQuery()
-at NHibernate.Tool.hbm2ddl.SchemaExport.ExecuteSql(DbCommand cmd, String sql) in c:\Users\Annemartijn\Documents\GitHub\nhibernate-core\src\NHibernate\Tool\hbm2ddl\SchemaExport.cs:line 176
-at NHibernate.Tool.hbm2ddl.SchemaExport.Execute(Action`1 scriptAction, Boolean export, Boolean throwOnError, TextWriter exportOutput, DbCommand statement, String sql) in c:\Users\Annemartijn\Documents\GitHub\nhibernate-core\src\NHibernate\Tool\hbm2ddl\SchemaExport.cs:line 161
-at NHibernate.Tool.hbm2ddl.SchemaExport.Execute(Action`1 scriptAction, Boolean export, Boolean justDrop, DbConnection connection, TextWriter exportOutput) in c:\Users\Annemartijn\Documents\GitHub\nhibernate-core\src\NHibernate\Tool\hbm2ddl\SchemaExport.cs:line 242
-at NHibernate.Tool.hbm2ddl.SchemaExport.Execute(Action`1 scriptAction, Boolean export, Boolean justDrop) in c:\Users\Annemartijn\Documents\GitHub\nhibernate-core\src\NHibernate\Tool\hbm2ddl\SchemaExport.cs:line 328
-]]></stack-trace>
-                            </failure>
+                          <test-suite type="TestFixture" name="IntegrationFixtureAsync" executed="True" result="Failure" success="False" time="0.241" asserts="0">
                             <results>
-                              <test-case name="NHibernate.Test.Criteria.Lambda.IntegrationFixtureAsync.StatelessSessionAsync" executed="True" result="Failure" success="False" time="0.000" asserts="0">
+                              <test-case name="NHibernate.Test.Criteria.Lambda.IntegrationFixtureAsync.StatelessSessionAsync" executed="True" result="Error" success="False" time="0.024" asserts="0">
                                 <failure>
-                                  <message><![CDATA[TestFixtureSetUp failed in IntegrationFixtureAsync]]></message>
-                                  <stack-trace />
+                                  <message><![CDATA[System.NotImplementedException : The method or operation is not implemented.]]></message>
+                                  <stack-trace><![CDATA[at NHibernate.Impl.StatelessSessionImpl.ListAsync(CriteriaImpl criteria, IList results, CancellationToken cancellationToken) in c:\Users\Annemartijn\Documents\GitHub\nhibernate-core\src\NHibernate\Impl\StatelessSessionImpl.cs:line 187
+at NHibernate.Impl.CriteriaImpl.ListAsync(IList results, CancellationToken cancellationToken) in c:\Users\Annemartijn\Documents\GitHub\nhibernate-core\src\NHibernate\Impl\CriteriaImpl.cs:line 285
+at NHibernate.Impl.CriteriaImpl.ListAsync[T](CancellationToken cancellationToken) in c:\Users\Annemartijn\Documents\GitHub\nhibernate-core\src\NHibernate\Impl\CriteriaImpl.cs:line 316
+at NHibernate.Impl.CriteriaImpl.ListAsync[T]() in c:\Users\Annemartijn\Documents\GitHub\nhibernate-core\src\NHibernate\Impl\CriteriaImpl.cs:line 309
+at NHibernate.Criterion.QueryOver`1.ListAsync() in c:\Users\Annemartijn\Documents\GitHub\nhibernate-core\src\NHibernate\Criterion\QueryOver.cs:line 72
+at NHibernate.Criterion.QueryOver`1.NHibernate.IQueryOver<TRoot>.ListAsync() in c:\Users\Annemartijn\Documents\GitHub\nhibernate-core\src\NHibernate\Criterion\QueryOver.cs:line 222
+at NHibernate.Test.Criteria.Lambda.IntegrationFixtureAsync.StatelessSessionAsync() in c:\Users\Annemartijn\Documents\GitHub\nhibernate-core\src\NHibernate.Test\Criteria\Lambda\IntegrationFixtureAsync.cs:line 433
+]]></stack-trace>
                                 </failure>
                               </test-case>
                             </results>

@@ -1,7 +1,8 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Data;using System.Data.Common;
+using System.Data;
+using System.Data.Common;
 using System.Linq.Expressions;
 using System.Threading;
 using System.Threading.Tasks;
@@ -184,9 +185,75 @@ namespace NHibernate.Impl
 
 		public override Task ListAsync(CriteriaImpl criteria, IList results, CancellationToken cancellationToken)
 		{
-			throw new NotImplementedException();
+			var sessionIdLoggingContext = new SessionIdLoggingContext(SessionId);
+			CheckAndUpdateSessionStatus();
+			string[] implementors = Factory.GetImplementors(criteria.EntityOrClassName);
+			int size = implementors.Length;
+
+			CriteriaLoader[] loaders = new CriteriaLoader[size];
+			for (int i = 0; i < size; i++)
+			{
+				loaders[i] = new CriteriaLoader(GetOuterJoinLoadable(implementors[i]), Factory,
+												criteria, implementors[i], EnabledFilters);
+			}
+
+			var asyncTasks = new Task<IList>[size];
+			for (int i = size - 1; i >= 0; i--)
+			{
+				asyncTasks[i] = loaders[i].ListAsync(this, cancellationToken);
+			}
+
+			return Task.Factory
+				.ContinueWhenAll(asyncTasks, tasks =>
+					{
+						try
+						{
+							EndListAsync(results, tasks, sessionIdLoggingContext, temporaryPersistenceContext);
+						}
+						finally
+						{
+							sessionIdLoggingContext.Dispose();
+						}
+					}, cancellationToken);
 		}
-		
+
+		private void EndListAsync(IList results, Task<IList>[] tasks, SessionIdLoggingContext sessionIdLoggingContext, StatefulPersistenceContext temporaryPersistenceContext)
+		{
+			bool success = false;
+
+			try
+			{
+				foreach (var task in tasks)
+				{
+					ArrayHelper.AddAll(results, task.Result);
+				}
+
+				success = true;
+			}
+			catch (AggregateException aggregateException)
+			{
+				HandleListAsyncExceptions(aggregateException);
+			}
+			finally
+			{
+				AfterOperation(success);
+			}
+
+			temporaryPersistenceContext.Clear();
+		}
+
+		private void HandleListAsyncExceptions(AggregateException aggregateException)
+		{
+			aggregateException.Handle(exception =>
+			{
+				if (exception is HibernateException) // This we know how to handle.
+				{
+					throw exception;
+				}
+				throw Convert(exception, "Unable to perform find");
+			});
+		}
+
 		public override IEnumerable Enumerable(IQueryExpression queryExpression, QueryParameters queryParameters)
 		{
 			throw new NotImplementedException();
