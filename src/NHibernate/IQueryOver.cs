@@ -57,6 +57,12 @@ namespace NHibernate
 		IList<U> List<U>();
 
 		/// <summary>
+		/// Asynchronously get the results of the root type and fill the <see cref="IList{U}"/>
+		/// </summary>
+		/// <returns>A <see cref="Task"/> containing a <see cref="IList{U}"/> filled with the results.</returns>
+		Task<IList<U>> ListAsync<U>();
+
+		/// <summary>
 		/// Clones the QueryOver, removes orders and paging, and projects the row-count
 		/// for the query
 		/// </summary>

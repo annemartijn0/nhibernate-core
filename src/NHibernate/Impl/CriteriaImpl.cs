@@ -283,18 +283,7 @@ namespace NHibernate.Impl
 			Before();
 
 			var task = session.ListAsync(this, results, cancellationToken);
-			if (task.IsCanceled)
-			{
-				return CanceledTask();
-			}
-			return task.ContinueWith(_ => After());
-		}
-
-		private static Task CanceledTask()
-		{
-			var taskCompletionSource = new TaskCompletionSource<object>();
-			taskCompletionSource.SetCanceled();
-			return taskCompletionSource.Task;
+			return task.IsCanceled ? task : task.ContinueWith(_ => After());
 		}
 
 		public IList<T> List<T>()

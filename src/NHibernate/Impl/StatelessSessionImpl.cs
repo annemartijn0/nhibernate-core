@@ -197,61 +197,39 @@ namespace NHibernate.Impl
 												criteria, implementors[i], EnabledFilters);
 			}
 
-			var asyncTasks = new Task<IList>[size];
+			var tasks = new Task<IList>[size];
 			for (int i = size - 1; i >= 0; i--)
 			{
-				asyncTasks[i] = loaders[i].ListAsync(this, cancellationToken);
+				tasks[i] = loaders[i].ListAsync(this, cancellationToken);
 			}
 
 			return Task.Factory
-				.ContinueWhenAll(asyncTasks, tasks =>
+				.ContinueWhenAll(tasks, _ =>
 					{
+						bool success = false;
 						try
 						{
-							EndListAsync(results, tasks, sessionIdLoggingContext, temporaryPersistenceContext);
+							tasks.ForEach(t => ArrayHelper.AddAll(results, t.Result));
+							success = true;
+						}
+						catch (AggregateException aggregateException)
+						{
+							aggregateException.Handle(exception =>
+							{
+								if (exception is HibernateException) // This we know how to handle.
+								{
+									throw exception;
+								}
+								throw Convert(exception, "Unable to perform find");
+							});
 						}
 						finally
 						{
+							AfterOperation(success);
 							sessionIdLoggingContext.Dispose();
 						}
+						temporaryPersistenceContext.Clear();
 					}, cancellationToken);
-		}
-
-		private void EndListAsync(IList results, Task<IList>[] tasks, SessionIdLoggingContext sessionIdLoggingContext, StatefulPersistenceContext temporaryPersistenceContext)
-		{
-			bool success = false;
-
-			try
-			{
-				foreach (var task in tasks)
-				{
-					ArrayHelper.AddAll(results, task.Result);
-				}
-
-				success = true;
-			}
-			catch (AggregateException aggregateException)
-			{
-				HandleListAsyncExceptions(aggregateException);
-			}
-			finally
-			{
-				AfterOperation(success);
-			}
-
-			temporaryPersistenceContext.Clear();
-		}
-
-		private void HandleListAsyncExceptions(AggregateException aggregateException)
-		{
-			aggregateException.Handle(exception =>
-			{
-				if (exception is HibernateException) // This we know how to handle.
-				{
-					throw exception;
-				}
-				throw Convert(exception, "Unable to perform find");
-			});
 		}
 
 		public override IEnumerable Enumerable(IQueryExpression queryExpression, QueryParameters queryParameters)

@@ -209,6 +209,7 @@
     <Compile Include="Criteria\Lambda\FunctionsIntegrationFixtureAsync.cs" />
     <Compile Include="Criteria\Lambda\FunctionsIntegrationFixture.cs" />
     <Compile Include="Criteria\Lambda\IntegrationFixtureAsync.cs" />
+    <Compile Include="Criteria\Lambda\ProjectIntegrationFixtureAsync.cs" />
     <Compile Include="Criteria\Lambda\SimpleIntegrationFixtureAsync.cs" />
     <Compile Include="Criteria\Lambda\SubQueryIntegrationFixtureAsync.cs" />
     <Compile Include="Criteria\Lambda\SubQueryIntegrationFixture.cs" />

@@ -121,10 +121,8 @@ namespace NHibernate.Test.Criteria.Lambda
 						.ListAsync()
 						.ContinueWith(task =>
 						{
-							var children = task.Result;
-
 							// Assert
-							children.Should().Have.Count.EqualTo(1);
+							task.Result.Should().Have.Count.EqualTo(1);
 						}).Wait();
 			}
 
@@ -134,16 +132,17 @@ namespace NHibernate.Test.Criteria.Lambda
 				Person parentAlias = null;
 
 				// Act
-				var parentNames =
-					s.QueryOver<Child>(() => childAlias)
-						.Left.JoinAlias(c => c.Parent, () => parentAlias, p => p.Name == childAlias.Nickname)
-						.Select(c => parentAlias.Name)
-						.List<string>();
-
-				// Assert
-				parentNames
-					.Where(n => !string.IsNullOrEmpty(n))
-					.Should().Have.Count.EqualTo(1);
+				s.QueryOver(() => childAlias)
+					.Left.JoinAlias(c => c.Parent, () => parentAlias, p => p.Name == childAlias.Nickname)
+					.Select(c => parentAlias.Name)
+					.ListAsync<string>()
+					.ContinueWith(task =>
+					{
+						// Assert
+						task.Result
+							.Where(n => !string.IsNullOrEmpty(n))
+							.Should().Have.Count.EqualTo(1);
+					}).Wait();
 			}
 
 			using (ISession s = OpenSession())
@@ -158,10 +157,8 @@ namespace NHibernate.Test.Criteria.Lambda
 					.ListAsync()
 					.ContinueWith(task =>
 					{
-						var people = task.Result;
-
 						// Assert
-						people.Should().Have.Count.EqualTo(1);
+						task.Result.Should().Have.Count.EqualTo(1);
 					}).Wait();
 			}
 
@@ -171,16 +168,17 @@ namespace NHibernate.Test.Criteria.Lambda
 				Child childAlias = null;
 
 				// Act
-				var childNames =
-					s.QueryOver<Person>(() => personAlias)
-						.Left.JoinAlias(p => p.Children, () => childAlias, c => c.Nickname == personAlias.Name)
-						.Select(p => childAlias.Nickname)
-						.List<string>();
-
-				// Assert
-				childNames
-					.Where(n => !string.IsNullOrEmpty(n))
-					.Should().Have.Count.EqualTo(1);
+				s.QueryOver<Person>(() => personAlias)
+					.Left.JoinAlias(p => p.Children, () => childAlias, c => c.Nickname == personAlias.Name)
+					.Select(p => childAlias.Nickname)
+					.ListAsync<string>()
+					.ContinueWith(task =>
+					{
+						// Assert
+						task.Result
+							.Where(n => !string.IsNullOrEmpty(n))
+							.Should().Have.Count.EqualTo(1);
+					}).Wait();
 			}
 		}
 

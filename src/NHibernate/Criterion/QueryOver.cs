@@ -77,6 +77,11 @@ namespace NHibernate.Criterion
 			return criteria.List<U>();
 		}
 
+		private Task<IList<U>> ListAsync<U>()
+		{
+			return criteria.ListAsync<U>();
+		}
+
 		private TRoot SingleOrDefault()
 		{
 			return criteria.UniqueResult<TRoot>();
@@ -223,6 +228,9 @@ namespace NHibernate.Criterion
 
 		IList<U> IQueryOver<TRoot>.List<U>()
 		{ return List<U>(); }
+
+		Task<IList<U>> IQueryOver<TRoot>.ListAsync<U>()
+		{ return ListAsync<U>(); }
 
 		IQueryOver<TRoot,TRoot> IQueryOver<TRoot>.ToRowCountQuery()
 		{ return ToRowCountQuery(); }
