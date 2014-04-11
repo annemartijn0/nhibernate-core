@@ -92,12 +92,12 @@ namespace NHibernate.Criterion
 			return criteria.UniqueResult<U>();
 		}
 
-		private IEnumerable<TRoot> Future()
+		private IAwaitableEnumerable<TRoot> Future()
 		{
 			return criteria.Future<TRoot>();
 		}
 
-		private IEnumerable<U> Future<U>()
+		private IAwaitableEnumerable<U> Future<U>()
 		{
 			return criteria.Future<U>();
 		}
@@ -250,10 +250,10 @@ namespace NHibernate.Criterion
 		U IQueryOver<TRoot>.SingleOrDefault<U>()
 		{ return SingleOrDefault<U>(); }
 
-		IEnumerable<TRoot> IQueryOver<TRoot>.Future()
+		IAwaitableEnumerable<TRoot> IQueryOver<TRoot>.Future()
 		{ return Future(); }
 
-		IEnumerable<U> IQueryOver<TRoot>.Future<U>()
+		IAwaitableEnumerable<U> IQueryOver<TRoot>.Future<U>()
 		{ return Future<U>(); }
 
 		IFutureValue<TRoot> IQueryOver<TRoot>.FutureValue()
