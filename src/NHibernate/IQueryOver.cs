@@ -95,9 +95,24 @@ namespace NHibernate
 		TRoot SingleOrDefault();
 
 		/// <summary>
+		/// Convenience method to asynchronously return a single instance that matches
+		/// the query, or null if the query returns no results.
+		/// </summary>
+		/// <returns>A <see cref="Task"/> containing the single result or <see langword="null" /></returns>
+		/// <exception cref="HibernateException">
+		/// If there is more than one matching result
+		/// </exception>
+		Task<TRoot> SingleOrDefaultAsync();
+
+		/// <summary>
 		/// Override type of <see cref="SingleOrDefault()" />.
 		/// </summary>
 		U SingleOrDefault<U>();
+
+		/// <summary>
+		/// Override type of <see cref="SingleOrDefaultAsync()" />.
+		/// </summary>
+		Task<U> SingleOrDefaultAsync<U>();
 
 		/// <summary>
 		/// Get a enumerable that when enumerated will execute

@@ -87,9 +87,19 @@ namespace NHibernate.Criterion
 			return criteria.UniqueResult<TRoot>();
 		}
 
+		private Task<TRoot> SingleOrDefaultAsync()
+		{
+			return criteria.UniqueResultAsync<TRoot>();
+		}
+
 		private U SingleOrDefault<U>()
 		{
 			return criteria.UniqueResult<U>();
+		}
+
+		private Task<U> SingleOrDefaultAsync<U>()
+		{
+			return criteria.UniqueResultAsync<U>();
 		}
 
 		private IAwaitableEnumerable<TRoot> Future()
@@ -247,8 +257,14 @@ namespace NHibernate.Criterion
 		TRoot IQueryOver<TRoot>.SingleOrDefault()
 		{ return SingleOrDefault(); }
 
+		Task<TRoot> IQueryOver<TRoot>.SingleOrDefaultAsync()
+		{ return SingleOrDefaultAsync(); }
+
 		U IQueryOver<TRoot>.SingleOrDefault<U>()
 		{ return SingleOrDefault<U>(); }
+
+		Task<U> IQueryOver<TRoot>.SingleOrDefaultAsync<U>()
+		{ return SingleOrDefaultAsync<U>(); }
 
 		IAwaitableEnumerable<TRoot> IQueryOver<TRoot>.Future()
 		{ return Future(); }

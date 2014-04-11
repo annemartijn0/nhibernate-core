@@ -89,6 +89,115 @@ namespace NHibernate.Test.Criteria.Lambda
 		}
 
 		[Test]
+		public void YearPartSingleOrDefaultAsync()
+		{
+			// Arrange
+			using (var s = OpenSession())
+			using (s.BeginTransaction())
+			{
+				// Act
+				s.QueryOver<Person>()
+					.Where(p => p.Name == "p2")
+					.Select(p => p.BirthDate.YearPart())
+					.SingleOrDefaultAsync<object>()
+					.ContinueWith(task =>
+					{
+						var yearOfBirth = task.Result;
+
+						// Assert
+						yearOfBirth.GetType().Should().Be(typeof(int));
+						yearOfBirth.Should().Be(2008);
+					}).Wait();
+			}
+		}
+
+		[Test]
+		public void SelectAvgYearPartAsync()
+		{
+			// Arrange
+			using (var s = OpenSession())
+			using (s.BeginTransaction())
+			{
+				// Act
+				s.QueryOver<Person>()
+					.SelectList(list => list.SelectAvg(p => p.BirthDate.YearPart()))
+					.SingleOrDefaultAsync<object>()
+					.ContinueWith(task =>
+					{
+						var avgYear = task.Result;
+
+						// Assert
+						avgYear.GetType().Should().Be(typeof(double));
+						string.Format("{0:0}", avgYear).Should().Be("2008");
+					}).Wait();
+			}
+		}
+
+		[Test]
+		public void SqrtSingleOrDefaultAsync()
+		{
+			// Arrange
+			using (var s = OpenSession())
+			using (s.BeginTransaction())
+			{
+				// Act
+				s.QueryOver<Person>()
+					.Where(p => p.Name == "p1")
+					.Select(p => p.Age.Sqrt())
+					.SingleOrDefaultAsync<object>()
+					.ContinueWith(task =>
+					{
+						var sqrtOfAge = task.Result;
+
+						// Assert
+						sqrtOfAge.Should().Be.InstanceOf<double>();
+						string.Format("{0:0.00}", sqrtOfAge).Should().Be((9.49).ToString());
+					}).Wait();
+			}
+		}
+
+		[Test]
+		public void FunctionsToLowerToUpperAsync()
+		{
+			// Arrange
+			using (var s = OpenSession())
+			using (s.BeginTransaction())
+			{
+				// Act
+				s.QueryOver<Person>()
+					.Where(p => p.Name == "pP3")
+					.Select(p => p.Name.Lower(), p => p.Name.Upper())
+					.SingleOrDefaultAsync<object[]>()
+					.ContinueWith(task =>
+					{
+						var names = task.Result;
+
+						// Assert
+						names[0].Should().Be("pp3");
+						names[1].Should().Be("PP3");
+					}).Wait();
+			}
+		}
+
+		[Test]
+		public void ConcatAsync()
+		{
+			// Arrange
+			using (var s = OpenSession())
+			using (s.BeginTransaction())
+			{
+				// Act
+				s.QueryOver<Person>()
+					.Where(p => p.Name == "p1")
+					.Select(p => Projections.Concat(p.Name, ", ", p.Name))
+					.SingleOrDefaultAsync<string>()
+					.ContinueWith(task =>
+						// Assert
+						task.Result.Should().Be("p1, p1")).Wait();
+			}
+		}
+
+		[Test]
 		public void MonthPartEqualsDayPartAsync()
 		{
 			// Arrange
@@ -176,6 +285,51 @@ namespace NHibernate.Test.Criteria.Lambda
 						persons.Count.Should().Be(2);
 						persons[0].Name.Should().Be("p1");
 						persons[1].Name.Should().Be("p2");
+					}).Wait();
+			}
+		}
+
+		[Test]
+		public void YearSingleOrDefaultAsync()
+		{
+			// Arrange
+			using (var s = OpenSession())
+			using (s.BeginTransaction())
+			{
+				// Act
+				s.QueryOver<Person>()
+					.Where(p => p.Name == "p2")
+					.Select(p => p.BirthDate.Year)
+					.SingleOrDefaultAsync<object>()
+					.ContinueWith(task =>
+					{
+						var yearOfBirth = task.Result;
+
+						// Assert
+						yearOfBirth.GetType().Should().Be(typeof(int));
+						yearOfBirth.Should().Be(2008);
+					}).Wait();
+			}
+		}
+
+		[Test]
+		public void SelectAvgYearAsync()
+		{
+			// Arrange
+			using (var s = OpenSession())
+			using (s.BeginTransaction())
+			{
+				// Act
+				s.QueryOver<Person>()
+					.SelectList(list => list.SelectAvg(p => p.BirthDate.Year))
+					.SingleOrDefaultAsync<object>()
+					.ContinueWith(task =>
+					{
+						var avgYear = task.Result;
+
+						// Assert
+						avgYear.GetType().Should().Be(typeof(double));
+						string.Format("{0:0}", avgYear).Should().Be("2008");
 					}).Wait();
 			}
 		}
