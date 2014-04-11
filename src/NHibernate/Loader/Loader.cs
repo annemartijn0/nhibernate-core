@@ -1647,7 +1647,8 @@ namespace NHibernate.Loader
 
 		private Task<IList> ListIgnoreQueryCacheAsync(ISessionImplementor session, CancellationToken cancellationToken, QueryParameters queryParameters)
 		{
-			return DoListAsync(session, cancellationToken, queryParameters);
+			return DoListAsync(session, cancellationToken, queryParameters)
+				.ContinueWith(task => GetResultList(task.Result, queryParameters.ResultTransformer), cancellationToken);
 		}
 
 		private Task<IList> ListUsingQueryCacheAsync(ISessionImplementor session, CancellationToken cancellationToken, QueryParameters queryParameters, ISet<string> querySpaces, IType[] resultTypes)
@@ -1667,7 +1668,7 @@ namespace NHibernate.Loader
 					{
 						result = task.Result;
 						PutResultInQueryCache(session, queryParameters, resultTypes, queryCache, key, result);
-						return result;
+						return GetResultList(result, queryParameters.ResultTransformer);
 					}, cancellationToken);
 			}
 

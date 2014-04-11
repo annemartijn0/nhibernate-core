@@ -90,7 +90,7 @@ namespace NHibernate.Test.Criteria.Lambda
 						Assert.That(actual[0].Count, Is.EqualTo(2));
 						Assert.That(actual[1].Name, Is.EqualTo("test person 2"));
 						Assert.That(actual[1].Count, Is.EqualTo(1));
-					});
+					}).Wait();
 			}
 		}
 	}

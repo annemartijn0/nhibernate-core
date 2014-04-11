@@ -223,6 +223,15 @@ namespace NHibernate.Impl
 								throw Convert(exception, "Unable to perform find");
 							});
 						}
+						catch (HibernateException)
+						{
+							// Do not call Convert on HibernateExceptions
+							throw;
+						}
+						catch (Exception sqle)
+						{
+							throw Convert(sqle, "Unable to perform find");
+						}
 						finally
 						{
 							AfterOperation(success);
