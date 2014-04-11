@@ -260,6 +260,12 @@ namespace NHibernate.Impl
 			return results;
 		}
 
+		public Task<IList> ListAsync()
+		{
+			var results = new List<object>();
+			return ListAsync(results).ContinueWith<IList>(_ => results);
+		}
+
 		public void List(IList results)
 		{
 			Before();
@@ -308,14 +314,25 @@ namespace NHibernate.Impl
 
 		public T UniqueResult<T>()
 		{
-			object result = UniqueResult();
-			if (result == null && typeof(T).IsValueType)
+			return UniqueResultOrDefault<T>(UniqueResult());
+		}
+
+		public Task<T> UniqueResultAsync<T>()
+		{
+			return UniqueResultAsync()
+				.ContinueWith(task => UniqueResultOrDefault<T>(task.Result));
+
+		}
+
+		private static T UniqueResultOrDefault<T>(object result)
+		{
+			if (result == null && typeof (T).IsValueType)
 			{
 				return default(T);
 			}
 			else
 			{
-				return (T)result;
+				return (T) result;
 			}
 		}
 
@@ -469,6 +486,12 @@ namespace NHibernate.Impl
 		public object UniqueResult()
 		{
 			return AbstractQueryImpl.UniqueElement(List());
+		}
+
+		public Task<object> UniqueResultAsync()
+		{
+			return ListAsync()
+				.ContinueWith(task => AbstractQueryImpl.UniqueElement(task.Result));
 		}
 
 		public ICriteria SetLockMode(LockMode lockMode)
@@ -828,6 +851,11 @@ namespace NHibernate.Impl
 				return root.List();
 			}
 
+			public Task<IList> ListAsync()
+			{
+				return root.ListAsync();
+			}
+
 			public IFutureValue<T> FutureValue<T>()
 			{
 				return root.FutureValue<T>();
@@ -871,6 +899,17 @@ namespace NHibernate.Impl
 			public T UniqueResult<T>()
 			{
 				object result = UniqueResult();
+				return UniqueResultOrException<T>(result);
+			}
+
+			public Task<T> UniqueResultAsync<T>()
+			{
+				return UniqueResultAsync()
+					.ContinueWith(task => UniqueResultOrException<T>(task.Result));
+			}
+
+			private static T UniqueResultOrException<T>(object result)
+			{
 				if (result == null && typeof(T).IsValueType)
 				{
 					throw new InvalidCastException(
@@ -890,6 +929,11 @@ namespace NHibernate.Impl
 			public object UniqueResult()
 			{
 				return root.UniqueResult();
+			}
+
+			public Task<object> UniqueResultAsync()
+			{
+				return root.UniqueResultAsync();
 			}
 
 			public ICriteria SetFetchMode(string associationPath, FetchMode mode)

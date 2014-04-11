@@ -52,6 +52,88 @@ namespace NHibernate.Test.Criteria
 		}
 
 		[Test]
+		public void UsingSqlFunctions_Concat_Async()
+		{
+			using (ISession session = sessions.OpenSession())
+			{
+				session.CreateCriteria(typeof(Student))
+					.SetProjection(new SqlFunctionProjection("concat",
+						NHibernateUtil.String,
+						Projections.Property("Name"),
+						new ConstantProjection(" "),
+						Projections.Property("Name")
+					))
+					.UniqueResultAsync<string>()
+					.ContinueWith(task => 
+						Assert.AreEqual("ayende ayende", task.Result)).Wait();
+			}
+		}
+
+		[Test]
+		public void UsingSqlFunctions_Concat_WithCast_Async()
+		{
+			if (Dialect is Oracle8iDialect)
+			{
+				Assert.Ignore("Not supported by the active dialect:{0}.", Dialect);
+			}
+			using (ISession session = sessions.OpenSession())
+			{
+				session.CreateCriteria(typeof(Student))
+					.SetProjection(Projections.SqlFunction("concat",
+						NHibernateUtil.String,
+						Projections.Cast(NHibernateUtil.String, Projections.Id()),
+						Projections.Constant(" "),
+						Projections.Property("Name")
+					))
+					.UniqueResultAsync<string>()
+					.ContinueWith(task =>
+						Assert.AreEqual("27 ayende", task.Result)).Wait();
+			}
+		}
+
+		[Test]
+		public void CanUseParametersWithProjections_Async()
+		{
+			using (ISession session = sessions.OpenSession())
+			{
+				session.CreateCriteria(typeof(Student))
+					.SetProjection(new AddNumberProjection("id", 15))
+					.UniqueResultAsync<long>()
+					.ContinueWith(task => 
+						Assert.AreEqual(42L, task.Result)).Wait();
+			}
+		}
+
+		[Test]
+		public void UsingConditionals_Async()
+		{
+			using (ISession session = sessions.OpenSession())
+			{
+				session.CreateCriteria(typeof (Student))
+					.SetProjection(
+						Projections.Conditional(
+							Expression.Eq("id", 27L),
+							Projections.Constant("yes"),
+							Projections.Constant("no"))
+					)
+					.UniqueResultAsync<string>()
+					.ContinueWith(task => 
+						Assert.AreEqual("yes", task.Result)).Wait();
+
+				session.CreateCriteria(typeof(Student))
+					.SetProjection(
+						Projections.Conditional(
+							Expression.Eq("id", 42L),
+							Projections.Constant("yes"),
+							Projections.Constant("no"))
+					)
+					.UniqueResultAsync<string>()
+					.ContinueWith(task => 
+						Assert.AreEqual("no", task.Result)).Wait();
+			}
+		}
+
+		[Test]
 		public void UseInWithProjectionAsync()
 		{
 			using (ISession session = sessions.OpenSession())

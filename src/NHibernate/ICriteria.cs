@@ -290,6 +290,12 @@ namespace NHibernate
 		IList List();
 
 		/// <summary>
+		/// Asynchronously get the results
+		/// </summary>
+		/// <returns></returns>
+		Task<IList> ListAsync();
+
+		/// <summary>
 		/// Convenience method to return a single instance that matches
 		/// the query, or null if the query returns no results.
 		/// </summary>
@@ -298,6 +304,16 @@ namespace NHibernate
 		/// If there is more than one matching result
 		/// </exception>
 		object UniqueResult();
+
+		/// <summary>
+		/// Convenience method to asynchronously return a single instance that matches
+		/// the query, or null if the query returns no results.
+		/// </summary>
+		/// <returns>A <see cref="Task"/>, that contains the single result or <see langword="null" /></returns>
+		/// <exception cref="HibernateException">
+		/// If there is more than one matching result
+		/// </exception>
+		Task<object> UniqueResultAsync();
 
 		/// <summary>
 		/// Get a enumerable that when enumerated will execute
@@ -391,6 +407,11 @@ namespace NHibernate
 		/// Strongly-typed version of <see cref="UniqueResult()" />.
 		/// </summary>
 		T UniqueResult<T>();
+
+		/// <summary>
+		/// Strongly-typed version of <see cref="UniqueResultAsync()" />.
+		/// </summary>
+		Task<T> UniqueResultAsync<T>();
 
 		/// <summary>
 		/// Clear all orders from criteria.
