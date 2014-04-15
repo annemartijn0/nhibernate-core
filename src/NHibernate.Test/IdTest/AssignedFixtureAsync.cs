@@ -1,5 +1,7 @@
 using System;
 using System.Collections.Generic;
+using System.Threading;
+using System.Threading.Tasks;
 using log4net;
 using log4net.Core;
 using NUnit.Framework;
@@ -37,6 +39,55 @@ namespace NHibernate.Test.IdTest
 				s.CreateQuery("delete from Child").ExecuteUpdate();
 				s.CreateQuery("delete from Parent").ExecuteUpdate();
 				t.Commit();
+			}
+		}
+
+		[Test]
+		[ExpectedException(typeof(AggregateException))]
+		public void UniqueResultAsyncShouldReturnCanceledTaskWhenPassedCanceledToken()
+		{
+			// Arrange
+			var cancellationTokenSource = new CancellationTokenSource();
+			cancellationTokenSource.Cancel();
+			Task result;
+
+			using (ISession session = OpenSession())
+			{
+				// Act
+				result = session.CreateQuery("select count(p) from Parent p")
+					.UniqueResultAsync<long>(cancellationTokenSource.Token);
+			}
+
+			// Assert
+			Assert.That(result.IsCanceled);
+			result.Wait();
+		}
+
+		[Test]
+		public void UniqueResultAsyncShouldThrowExceptionWhenCancellationTokenIsCanceled()
+		{
+			// Arrange
+			var cancellationTokenSource = new CancellationTokenSource();
+			Task task;
+
+			using (ISession session = OpenSession())
+			{
+				// Act
+				task = session.CreateQuery("select count(p) from Parent p")
+					.UniqueResultAsync<long>(cancellationTokenSource.Token);
+				cancellationTokenSource.Cancel();
+			}
+
+			try
+			{
+				task.Wait();
+				Assert.Fail("Should have thrown exception");
+			}
+			catch (AggregateException aggregateException)
+			{
+				// Assert
+				Assert.That(aggregateException.InnerExceptions.Count, Is.EqualTo(1));
+				Assert.That(aggregateException.InnerExceptions[0], Is.TypeOf(typeof(TaskCanceledException)));
 			}
 		}
 
