@@ -182,6 +182,12 @@ namespace NHibernate
 		Task<object> UniqueResultAsync();
 
 		/// <summary>
+		/// Asynchronous version of <see cref="UniqueResult()"/>.
+		/// </summary>
+		/// <param name="cancellationToken">token to cancel the request.</param>
+		Task<object> UniqueResultAsync(CancellationToken cancellationToken);
+
+		/// <summary>
 		/// Strongly-typed version of <see cref="UniqueResult()"/>.
 		/// </summary>
 		T UniqueResult<T>();
@@ -190,6 +196,12 @@ namespace NHibernate
 		/// Asynchronous version of <see cref="UniqueResult{T}()"/>.
 		/// </summary>
 		Task<T> UniqueResultAsync<T>();
+
+		/// <summary>
+		/// Asynchronous version of <see cref="UniqueResult{T}()"/>.
+		/// </summary>
+		/// <param name="cancellationToken">token to cancel the request.</param>
+		Task<T> UniqueResultAsync<T>(CancellationToken cancellationToken);
 
 		/// <summary>
 		/// Execute the update or delete statement.

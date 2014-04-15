@@ -83,7 +83,7 @@ namespace NHibernate.Test.Hql
 						result = task.Result;
 
 						// Assert
-						Assert.That(result.GetType(), Is.InstanceOf(typeof(long)));
+						Assert.That(result.GetType(), Is.EqualTo(typeof(long)));
 						Assert.That(result, Is.EqualTo(2));
 					}).Wait();
 
@@ -94,7 +94,7 @@ namespace NHibernate.Test.Hql
 						result = task.Result;
 
 						// Assert
-						Assert.That(result.GetType(), Is.InstanceOf(typeof(long)));
+						Assert.That(result.GetType(), Is.EqualTo(typeof(long)));
 						Assert.That(result, Is.EqualTo(2));
 					}).Wait();
 
@@ -109,7 +109,7 @@ namespace NHibernate.Test.Hql
 							result = task.Result;
 
 							// Assert
-							Assert.That(result.GetType(), Is.InstanceOf(typeof(long)));
+							Assert.That(result.GetType(), Is.EqualTo(typeof(long)));
 							Assert.That(result, Is.EqualTo(2));
 						}).Wait();
 				}
@@ -139,10 +139,9 @@ namespace NHibernate.Test.Hql
 						result = task.Result;
 
 						// Assert
-						Assert.That(result.GetType(), Is.InstanceOf(typeof(double)));
+						Assert.That(result.GetType(), Is.EqualTo(typeof(double)));
 						Assert.That(result, Is.EqualTo(15D));
 					}).Wait();
-
 
 				// In where
 				if (TestDialect.SupportsHavingWithoutGroupBy)
@@ -154,7 +153,7 @@ namespace NHibernate.Test.Hql
 							result = task.Result;
 
 							// Assert
-							Assert.That(result.GetType(), Is.InstanceOf(typeof(double)));
+							Assert.That(result.GetType(), Is.EqualTo(typeof(double)));
 							Assert.That(result, Is.EqualTo(15D));
 						}).Wait();
 				}
@@ -183,7 +182,7 @@ namespace NHibernate.Test.Hql
 						result = task.Result;
 
 						// Assert
-						Assert.That(result.GetType(), Is.InstanceOf(typeof(float)));
+						Assert.That(result.GetType(), Is.EqualTo(typeof(float)));
 						Assert.That(result, Is.EqualTo(20F));
 					}).Wait();
 
@@ -196,7 +195,7 @@ namespace NHibernate.Test.Hql
 							result = task.Result;
 
 							// Assert
-							Assert.That(result.GetType(), Is.InstanceOf(typeof(float)));
+							Assert.That(result.GetType(), Is.EqualTo(typeof(float)));
 							Assert.That(result, Is.EqualTo(20F));
 						}).Wait();
 				}
@@ -225,7 +224,7 @@ namespace NHibernate.Test.Hql
 						result = task.Result;
 
 						// Assert
-						Assert.That(result.GetType(), Is.InstanceOf(typeof(float)));
+						Assert.That(result.GetType(), Is.EqualTo(typeof(float)));
 						Assert.That(result, Is.EqualTo(10F));
 					}).Wait();
 
@@ -239,7 +238,7 @@ namespace NHibernate.Test.Hql
 							result = task.Result;
 
 							// Assert
-							Assert.That(result.GetType(), Is.InstanceOf(typeof(float)));
+							Assert.That(result.GetType(), Is.EqualTo(typeof(float)));
 							Assert.That(result, Is.EqualTo(10F));
 						}).Wait();
 				}
@@ -321,7 +320,7 @@ namespace NHibernate.Test.Hql
 						result = task.Result;
 
 						// Assert
-						Assert.That(result.GetType(), Is.InstanceOf(typeof(double)));
+						Assert.That(result.GetType(), Is.EqualTo(typeof(double)));
 						Assert.That(result, Is.EqualTo(30D));
 					}).Wait();
 
@@ -334,7 +333,7 @@ namespace NHibernate.Test.Hql
 							result = task.Result;
 
 							// Assert
-							Assert.That(result.GetType(), Is.InstanceOf(typeof(double)));
+							Assert.That(result.GetType(), Is.EqualTo(typeof(double)));
 							Assert.That(result, Is.EqualTo(30D));
 						}).Wait();
 				}

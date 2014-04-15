@@ -950,6 +950,22 @@ namespace NHibernate.Impl
 		public T UniqueResult<T>()
 		{
 			object result = UniqueResult();
+			return ResultOrDefault<T>(result);
+		}
+
+		public Task<T> UniqueResultAsync<T>()
+		{
+			return UniqueResultAsync<T>(CancellationToken.None);
+		}
+
+		public Task<T> UniqueResultAsync<T>(CancellationToken cancellationToken)
+		{
+			return UniqueResultAsync(cancellationToken)
+				.ContinueWith(task => ResultOrDefault<T>(task.Result), cancellationToken);
+		}
+
+		private static T ResultOrDefault<T>(object result)
+		{
 			if (result == null && typeof(T).IsValueType)
 			{
 				return default(T);
@@ -960,11 +976,6 @@ namespace NHibernate.Impl
 			}
 		}
 
-		public Task<T> UniqueResultAsync<T>()
-		{
-			throw new NotImplementedException();
-		}
-
 		public object UniqueResult()
 		{
 			return UniqueElement(List());
@@ -972,7 +983,13 @@ namespace NHibernate.Impl
 
 		public Task<object> UniqueResultAsync()
 		{
-			throw new NotImplementedException();
+			return UniqueResultAsync(CancellationToken.None);
+		}
+
+		public Task<object> UniqueResultAsync(CancellationToken cancellationToken)
+		{
+			return ListAsync(cancellationToken)
+				.ContinueWith(task => UniqueElement(task.Result), cancellationToken);
 		}
 
 		internal static object UniqueElement(IList list)
