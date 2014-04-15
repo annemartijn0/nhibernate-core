@@ -2,6 +2,8 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 using Antlr.Runtime;
 using Antlr.Runtime.Tree;
 
@@ -109,36 +111,71 @@ namespace NHibernate.Hql.Ast.ANTLR
 
 			IList results = _queryLoader.List(session, queryParametersToUse);
 
-			if ( needsDistincting ) 
+			return ResultsOrDistinctResults(queryParameters, needsDistincting, hasLimit, results);
+		}
+
+		public Task<IList> ListAsync(ISessionImplementor session, QueryParameters queryParameters, CancellationToken cancellationToken)
+		{
+			// Delegate to the QueryLoader...
+			ErrorIfDML();
+			var query = (QueryNode)_sqlAst;
+			bool hasLimit = queryParameters.RowSelection != null && queryParameters.RowSelection.DefinesLimits;
+			bool needsDistincting = (query.GetSelectClause().IsDistinct || hasLimit) && ContainsCollectionFetches;
+
+			QueryParameters queryParametersToUse;
+
+			if (hasLimit && ContainsCollectionFetches)
+			{
+				log.Warn("firstResult/maxResults specified with collection fetch; applying in memory!");
+				var selection = new RowSelection
+				{
+					FetchSize = queryParameters.RowSelection.FetchSize,
+					Timeout = queryParameters.RowSelection.Timeout
+				};
+				queryParametersToUse = queryParameters.CreateCopyUsing(selection);
+			}
+			else
+			{
+				queryParametersToUse = queryParameters;
+			}
+
+			return _queryLoader.ListAsync(session, queryParametersToUse, cancellationToken)
+				.ContinueWith(task => ResultsOrDistinctResults(queryParameters, needsDistincting, hasLimit, task.Result), cancellationToken);
+		}
+
+		private static IList ResultsOrDistinctResults(QueryParameters queryParameters, bool needsDistincting, bool hasLimit,
+			IList results)
+		{
+			if (needsDistincting)
 			{
 				int includedCount = -1;
 				// NOTE : firstRow is zero-based
 				int first = !hasLimit || queryParameters.RowSelection.FirstRow == RowSelection.NoValue
-							? 0
-							: queryParameters.RowSelection.FirstRow;
+					? 0
+					: queryParameters.RowSelection.FirstRow;
 				int max = !hasLimit || queryParameters.RowSelection.MaxRows == RowSelection.NoValue
-							? -1
-							: queryParameters.RowSelection.MaxRows;
+					? -1
+					: queryParameters.RowSelection.MaxRows;
 
 				int size = results.Count;
 				var tmp = new List<object>();
 				var distinction = new IdentitySet();
 
-				for ( int i = 0; i < size; i++ ) 
+				for (int i = 0; i < size; i++)
 				{
 					object result = results[i];
-					if ( !distinction.Add(result ) ) 
+					if (!distinction.Add(result))
 					{
 						continue;
 					}
 					includedCount++;
-					if ( includedCount < first ) 
+					if (includedCount < first)
 					{
 						continue;
 					}
-					tmp.Add( result );
+					tmp.Add(result);
 					// NOTE : ( max - 1 ) because first is zero-based while max is not...
-					if ( max >= 0 && ( includedCount - first ) >= ( max - 1 ) ) 
+					if (max >= 0 && (includedCount - first) >= (max - 1))
 					{
 						break;
 					}

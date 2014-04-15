@@ -3,6 +3,8 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Data;using System.Data.Common;
 using System.Diagnostics;
+using System.Threading;
+using System.Threading.Tasks;
 using NHibernate.Engine;
 using NHibernate.Event;
 using NHibernate.Hql;
@@ -287,6 +289,12 @@ namespace NHibernate.Loader.Hql
 		{
 			CheckQuery(queryParameters);
 			return List(session, queryParameters, _queryTranslator.QuerySpaces, _queryReturnTypes);
+		}
+
+		public Task<IList> ListAsync(ISessionImplementor session, QueryParameters queryParameters, CancellationToken cancellationToken)
+		{
+			CheckQuery(queryParameters);
+			return ListAsync(session, cancellationToken, queryParameters, _queryTranslator.QuerySpaces, _queryReturnTypes);
 		}
 
 		public override IList GetResultList(IList results, IResultTransformer resultTransformer)

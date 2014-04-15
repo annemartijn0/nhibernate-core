@@ -94,6 +94,15 @@ namespace NHibernate.Engine
 		IList List(IQueryExpression queryExpression, QueryParameters parameters);
 
 		/// <summary>
+		/// Asynchronously execute a <c>List()</c> expression query
+		/// </summary>
+		/// <param name="queryExpression"></param>
+		/// <param name="parameters"></param>
+		/// <param name="cancellationToken"></param>
+		/// <returns></returns>
+		Task<IList> ListAsync(IQueryExpression queryExpression, QueryParameters parameters, CancellationToken cancellationToken);
+
+		/// <summary>
 		/// Create a new instance of <c>Query</c> for the given query expression
 		/// <param name="queryExpression">A hibernate query expression</param>
 		/// <returns>The query</returns>
@@ -104,6 +113,8 @@ namespace NHibernate.Engine
 		void List(string query, QueryParameters parameters, IList results);
 
 		void List(IQueryExpression queryExpression, QueryParameters queryParameters, IList results);
+
+		Task ListAsync(IQueryExpression queryExpression, QueryParameters queryParameters, IList results, CancellationToken cancellationToken);
 
 		/// <summary>
 		/// Strongly-typed version of <see cref="List(string,QueryParameters)" />

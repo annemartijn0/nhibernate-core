@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using NHibernate.Engine;
 using NHibernate.Engine.Query;
@@ -89,7 +90,27 @@ namespace NHibernate.Impl
 
 		public override Task<IList> ListAsync()
 		{
-			throw new System.NotImplementedException();
+			return ListAsync(CancellationToken.None);
+		}
+
+		public override Task<IList> ListAsync(CancellationToken cancellationToken)
+		{
+			VerifyParameters();
+			var namedParams = NamedParams;
+			Before();
+			
+				return Session.ListAsync(ExpandParameters(namedParams), GetQueryParameters(namedParams), cancellationToken)
+					.ContinueWith(task =>
+					{
+						try
+						{
+							return task.Result;
+						}
+						finally
+						{
+							After();
+						}
+					});
 		}
 
 		public override void List(IList results)

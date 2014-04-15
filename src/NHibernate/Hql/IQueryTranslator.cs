@@ -1,5 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
+using System.Threading;
+using System.Threading.Tasks;
 using NHibernate.Engine;
 using NHibernate.Engine.Query;
 using NHibernate.Event;
@@ -36,6 +38,13 @@ namespace NHibernate.Hql
 		/// <returns>The query list results.</returns>
 		/// <exception cref="NHibernate.HibernateException"></exception>
 		IList List(ISessionImplementor session, QueryParameters queryParameters);
+
+		/// <summary>
+		/// Asynchronous version of <see cref="List(ISessionImplementor, QueryParameters)"/>
+		/// </summary>
+		/// <param name="cancellationToken">cancellationToken to cancel the request</param>
+		/// <returns>A Task containing the query list results.</returns>
+		Task<IList> ListAsync(ISessionImplementor session, QueryParameters queryParameters, CancellationToken cancellationToken);
 
 		IEnumerable GetEnumerable(QueryParameters queryParameters, IEventSource session);
 

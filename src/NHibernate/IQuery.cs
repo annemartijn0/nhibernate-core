@@ -1,5 +1,6 @@
 using System;
 using System.Collections;
+using System.Threading;
 using System.Threading.Tasks;
 using NHibernate.Transform;
 using NHibernate.Type;
@@ -141,6 +142,18 @@ namespace NHibernate
 		/// or if you want to fill the 2nd level cache.
 		/// </remarks>
 		Task<IList> ListAsync();
+
+		/// <summary>
+		/// Asynchronously return the query results as an <see cref="IList"/>. If the query contains multiple results per row,
+		/// the results are returned in an instance of <c>object[]</c>.
+		/// </summary>
+		/// <param name="cancellationToken">Token to cancel the request.</param>
+		/// <returns>A <see cref="Task"/> containing an <see cref="IList"/> filled with the results.</returns>
+		/// <remarks>
+		/// This is a good strategy to use if you expect few of the objects being returned are already loaded
+		/// or if you want to fill the 2nd level cache.
+		/// </remarks>
+		Task<IList> ListAsync(CancellationToken cancellationToken);
 
 		/// <summary>
 		/// Return the query results an place them into the <see cref="IList"/>.

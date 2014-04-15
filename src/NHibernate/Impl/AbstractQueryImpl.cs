@@ -944,6 +944,7 @@ namespace NHibernate.Impl
 		public abstract IEnumerable<T> Enumerable<T>();
 		public abstract IList List();
 		public abstract Task<IList> ListAsync();
+		public abstract Task<IList> ListAsync(CancellationToken cancellationToken);
 		public abstract void List(IList results);
 		public abstract IList<T> List<T>();
 		public T UniqueResult<T>()

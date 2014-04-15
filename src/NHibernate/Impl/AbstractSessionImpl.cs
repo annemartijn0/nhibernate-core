@@ -127,7 +127,18 @@ namespace NHibernate.Impl
 			return results;
 		}
 
+		public virtual Task<IList> ListAsync(IQueryExpression queryExpression, QueryParameters parameters, CancellationToken cancellationToken)
+		{
+			var results = (IList)typeof(List<>).MakeGenericType(queryExpression.Type)
+												 .GetConstructor(System.Type.EmptyTypes)
+												 .Invoke(null);
+			return ListAsync(queryExpression, parameters, results, cancellationToken)
+				.ContinueWith(_ => results, cancellationToken);
+		}
+
 		public abstract void List(IQueryExpression queryExpression, QueryParameters queryParameters, IList results);
+
+		public abstract Task ListAsync(IQueryExpression queryExpression, QueryParameters queryParameters, IList results, CancellationToken cancellationToken);
 
 		public virtual IList<T> List<T>(IQueryExpression query, QueryParameters parameters)
 		{

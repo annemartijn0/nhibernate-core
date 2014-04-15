@@ -620,10 +620,7 @@ namespace NHibernate.Impl
 		{
 			using (new SessionIdLoggingContext(SessionId))
 			{
-				CheckAndUpdateSessionStatus();
-				queryParameters.ValidateParameters();
-				var plan = GetHQLQueryPlan(queryExpression, false);
-				AutoFlushIfRequired(plan.QuerySpaces);
+				var plan = QueryExpressionPlan(queryExpression, queryParameters);
 
 				bool success = false;
 				dontFlushFromFind++; //stops flush being called multiple times if this method is recursively called
@@ -647,6 +644,51 @@ namespace NHibernate.Impl
 					AfterOperation(success);
 				}
 			}
+		}
+
+		public override Task ListAsync(IQueryExpression queryExpression, QueryParameters queryParameters, IList results, CancellationToken cancellationToken)
+		{
+			var sessionIdLoggingContext = new SessionIdLoggingContext(SessionId);
+			var plan = QueryExpressionPlan(queryExpression, queryParameters);
+
+			bool success = false;
+			dontFlushFromFind++; //stops flush being called multiple times if this method is recursively called
+				
+			return plan.PerformListAsync(queryParameters, this, results, cancellationToken)
+				.ContinueWith(task =>
+				{
+					try
+					{
+						task.Wait();
+						success = true;
+					}
+					catch (AggregateException aggregateException)
+					{
+						foreach (var exception in aggregateException.InnerExceptions)
+						{
+							if (exception is HibernateException)
+							{
+								// Do not call Convert on HibernateExceptions
+								throw;
+							}
+							throw Convert(exception, "Could not execute query");
+						}
+					}
+					finally
+					{
+						dontFlushFromFind--;
+						AfterOperation(success);
+					}
+				});
+		}
+
+		private IQueryExpressionPlan QueryExpressionPlan(IQueryExpression queryExpression, QueryParameters queryParameters)
+		{
+			CheckAndUpdateSessionStatus();
+			queryParameters.ValidateParameters();
+			var plan = GetHQLQueryPlan(queryExpression, false);
+			AutoFlushIfRequired(plan.QuerySpaces);
+			return plan;
 		}
 
 		public override IQueryTranslator[] GetQueries(IQueryExpression query, bool scalar)

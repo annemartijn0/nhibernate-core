@@ -115,9 +115,7 @@ namespace NHibernate.Impl
 		{
 			using (new SessionIdLoggingContext(SessionId))
 			{
-				CheckAndUpdateSessionStatus();
-				queryParameters.ValidateParameters();
-				var plan = GetHQLQueryPlan(queryExpression, false);
+				var plan = QueryExpressionPlan(queryExpression, queryParameters);
 
 				bool success = false;
 				try
@@ -140,6 +138,49 @@ namespace NHibernate.Impl
 				}
 				temporaryPersistenceContext.Clear();
 			}
+		}
+
+		public override Task ListAsync(IQueryExpression queryExpression, QueryParameters queryParameters, IList results, CancellationToken cancellationToken)
+		{
+			var sessionLoggingContext = new SessionIdLoggingContext(SessionId);
+			var plan = QueryExpressionPlan(queryExpression, queryParameters);
+
+			bool success = false;
+			return plan.PerformListAsync(queryParameters, this, results, cancellationToken)
+				.ContinueWith(task =>
+				{
+					try
+					{
+						task.Wait();
+						success = true;
+					}
+					catch (AggregateException aggregateException)
+					{
+						foreach (var exception in aggregateException.InnerExceptions)
+						{
+							if (exception is HibernateException)
+							{
+								// Do not call Convert on HibernateExceptions
+								throw;
+							}
+							throw Convert(exception, "Could not execute query");
+						}
+					}
+					finally
+					{
+						sessionLoggingContext.Dispose();
+						AfterOperation(success);
+					}
+					temporaryPersistenceContext.Clear();
+				});
+		}
+
+		private IQueryExpressionPlan QueryExpressionPlan(IQueryExpression queryExpression, QueryParameters queryParameters)
+		{
+			CheckAndUpdateSessionStatus();
+			queryParameters.ValidateParameters();
+			var plan = GetHQLQueryPlan(queryExpression, false);
+			return plan;
 		}
 
 		public override void List(CriteriaImpl criteria, IList results)

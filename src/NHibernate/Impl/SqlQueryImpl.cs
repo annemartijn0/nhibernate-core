@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Threading;
 using System.Threading.Tasks;
 using NHibernate.Engine;
 using NHibernate.Engine.Query;
@@ -134,6 +135,11 @@ namespace NHibernate.Impl
 		}
 
 		public override Task<IList> ListAsync()
+		{
+			return ListAsync(CancellationToken.None);
+		}
+
+		public override Task<IList> ListAsync(CancellationToken cancellationToken)
 		{
 			throw new NotImplementedException();
 		}
