@@ -310,6 +310,7 @@ namespace NHibernate.Test.NHSpecificTest.Futures
 			try
 			{
 				task.Wait();
+				Assert.Fail("Should have thrown exception");
 			}
 			catch (AggregateException aggregateException)
 			{

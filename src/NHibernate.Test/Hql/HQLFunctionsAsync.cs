@@ -1,7 +1,9 @@
 using System;
 using System.Collections;
+using System.Threading;
 using NHibernate.Dialect;
 using NUnit.Framework;
+using System.Threading.Tasks;
 
 namespace NHibernate.Test.Hql
 {
@@ -57,6 +59,55 @@ namespace NHibernate.Test.Hql
 				s.Delete("from Human");
 				s.Delete("from Animal");
 				s.Flush();
+			}
+		}
+
+		[Test]
+		[ExpectedException(typeof(AggregateException))]
+		public void UniqueResultAsyncShouldReturnCanceledTaskWhenPassedCanceledToken()
+		{
+			// Arrange
+			var cancellationTokenSource = new CancellationTokenSource();
+			cancellationTokenSource.Cancel();
+			Task result;
+
+			using (ISession session = OpenSession())
+			{
+				// Act
+				result = session.CreateQuery("select count(distinct a.id) from Animal a")
+					.UniqueResultAsync(cancellationTokenSource.Token);
+			}
+
+			// Assert
+			Assert.That(result.IsCanceled);
+			result.Wait();
+		}
+
+		[Test]
+		public void UniqueResultAsyncShouldThrowExceptionWhenCancellationTokenIsCanceled()
+		{
+			// Arrange
+			var cancellationTokenSource = new CancellationTokenSource();
+			Task task;
+
+			using (ISession session = OpenSession())
+			{
+				// Act
+				task = session.CreateQuery("select count(distinct a.id) from Animal a")
+					.UniqueResultAsync(cancellationTokenSource.Token);
+				cancellationTokenSource.Cancel();
+			}
+
+			try
+			{
+				task.Wait();
+				Assert.Fail("Should have thrown exception");
+			}
+			catch (AggregateException aggregateException)
+			{
+				// Assert
+				Assert.That(aggregateException.InnerExceptions.Count, Is.EqualTo(1));
+				Assert.That(aggregateException.InnerExceptions[0], Is.TypeOf(typeof(TaskCanceledException)));
 			}
 		}
 
