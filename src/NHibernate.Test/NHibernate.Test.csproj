@@ -462,6 +462,7 @@
     <Compile Include="Hql\Ast\WithClauseFixture.cs" />
     <Compile Include="Hql\Ast\Zoo.cs" />
     <Compile Include="Hql\BaseFunctionFixture.cs" />
+    <Compile Include="Hql\HQLFunctionsAsync.cs" />
     <Compile Include="IdGen\Enhanced\Forcedtable\Entity.cs" />
     <Compile Include="IdGen\Enhanced\OptimizerTests.cs" />
     <Compile Include="IdGen\Enhanced\Sequence\DefaultOptimizedSequenceTest.cs" />
@@ -469,6 +470,7 @@
     <Compile Include="IdGen\Enhanced\SourceMock.cs" />
     <Compile Include="IdGen\Enhanced\Table\PooledLoTableTest.cs" />
     <Compile Include="IdTest\AssignedClass.cs" />
+    <Compile Include="IdTest\AssignedFixtureAsync.cs" />
     <Compile Include="IdTest\AssignedFixture.cs" />
     <Compile Include="IdTest\TableGeneratorFixture.cs" />
     <Compile Include="Immutable\Contract.cs" />

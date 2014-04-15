@@ -958,9 +958,19 @@ namespace NHibernate.Impl
 			}
 		}
 
+		public Task<T> UniqueResultAsync<T>()
+		{
+			throw new NotImplementedException();
+		}
+
 		public object UniqueResult()
 		{
 			return UniqueElement(List());
+		}
+
+		public Task<object> UniqueResultAsync()
+		{
+			throw new NotImplementedException();
 		}
 
 		internal static object UniqueElement(IList list)

@@ -1,5 +1,6 @@
 using System;
 using System.Collections;
+using System.Threading.Tasks;
 using NHibernate.Transform;
 using NHibernate.Type;
 using System.Collections.Generic;
@@ -152,9 +153,19 @@ namespace NHibernate
 		object UniqueResult();
 
 		/// <summary>
+		/// Asynchronous version of <see cref="UniqueResult()"/>.
+		/// </summary>
+		Task<object> UniqueResultAsync();
+
+		/// <summary>
 		/// Strongly-typed version of <see cref="UniqueResult()"/>.
 		/// </summary>
 		T UniqueResult<T>();
+
+		/// <summary>
+		/// Asynchronous version of <see cref="UniqueResult{T}()"/>.
+		/// </summary>
+		Task<T> UniqueResultAsync<T>();
 
 		/// <summary>
 		/// Execute the update or delete statement.
