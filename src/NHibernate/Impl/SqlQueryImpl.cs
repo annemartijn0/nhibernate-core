@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 using NHibernate.Engine;
 using NHibernate.Engine.Query;
 using NHibernate.Engine.Query.Sql;
@@ -130,6 +131,11 @@ namespace NHibernate.Impl
 			{
 				After();
 			}
+		}
+
+		public override Task<IList> ListAsync()
+		{
+			throw new NotImplementedException();
 		}
 
 		public override void List(IList results)

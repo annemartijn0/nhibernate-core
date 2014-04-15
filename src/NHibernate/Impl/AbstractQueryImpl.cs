@@ -943,6 +943,7 @@ namespace NHibernate.Impl
 		public abstract IEnumerable Enumerable();
 		public abstract IEnumerable<T> Enumerable<T>();
 		public abstract IList List();
+		public abstract Task<IList> ListAsync();
 		public abstract void List(IList results);
 		public abstract IList<T> List<T>();
 		public T UniqueResult<T>()
