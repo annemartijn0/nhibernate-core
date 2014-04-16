@@ -142,6 +142,7 @@ namespace NHibernate.Impl
 
 		public override Task ListAsync(IQueryExpression queryExpression, QueryParameters queryParameters, IList results, CancellationToken cancellationToken)
 		{
+			throw new NotImplementedException();
 			var sessionLoggingContext = new SessionIdLoggingContext(SessionId);
 			var plan = QueryExpressionPlan(queryExpression, queryParameters);
 
@@ -363,6 +364,11 @@ namespace NHibernate.Impl
 				}
 				temporaryPersistenceContext.Clear();
 			}
+		}
+
+		public override Task ListCustomQueryAsync(ICustomQuery customQuery, QueryParameters queryParameters, IList results, CancellationToken cancellationToken)
+		{
+			throw new NotImplementedException();
 		}
 
 		public override object GetFilterParameterValue(string filterParameterName)

@@ -1802,7 +1802,16 @@ namespace NHibernate.Loader
 			}
 			catch (AggregateException aggregateException)
 			{
-				HandleDoQueryAndInitializeNonLazyCollectionsAsyncExceptions(aggregateException, queryParameters);
+				foreach (var exception in aggregateException.Flatten().InnerExceptions)
+				{
+					if (exception is HibernateException) // This we know how to handle.
+					{
+						throw;
+					}
+					throw ADOExceptionHelper.Convert(Factory.SQLExceptionConverter, exception, "could not execute query",
+							SqlString,
+							queryParameters.PositionalParameterValues, queryParameters.NamedParameters);
+				}
 			}
 
 			if (statsEnabled)
@@ -1812,20 +1821,6 @@ namespace NHibernate.Loader
 			}
 
 			return result;
-		}
-
-		private void HandleDoQueryAndInitializeNonLazyCollectionsAsyncExceptions(AggregateException aggregateException, QueryParameters queryParameters)
-		{
-			aggregateException.Handle(x =>
-			{
-				if (x is HibernateException) // This we know how to handle.
-				{
-					throw x;
-				}
-				throw ADOExceptionHelper.Convert(Factory.SQLExceptionConverter, x, "could not execute query",
-						SqlString,
-						queryParameters.PositionalParameterValues, queryParameters.NamedParameters);
-			});
 		}
 
 		/// <summary>

@@ -3,6 +3,8 @@ using System.Linq;
 using System.Collections;
 using System.Collections.Generic;
 using System.Data;using System.Data.Common;
+using System.Threading;
+using System.Threading.Tasks;
 using NHibernate.Engine;
 using NHibernate.Hql;
 using NHibernate.Param;
@@ -273,6 +275,11 @@ namespace NHibernate.Loader.Custom
 		public IList List(ISessionImplementor session, QueryParameters queryParameters)
 		{
 			return List(session, queryParameters, querySpaces, resultTypes);
+		}
+
+		public Task<IList> ListAsync(ISessionImplementor session, QueryParameters queryParameters, CancellationToken cancellationToken)
+		{
+			return ListAsync(session, cancellationToken, queryParameters, querySpaces, resultTypes);
 		}
 
 		// Not ported: scroll

@@ -147,12 +147,10 @@ namespace NHibernate.Engine.Query
 				tasks[i] = Translators[i].ListAsync(session, queryParametersToUse, cancellationToken);
 			}
 
-			return Task.Factory.ContinueWhenAll(tasks, _ =>
+			return Task.Factory.ContinueWhenAll(tasks, delegate
 			{
 				foreach (IList tmp in tasks.Select(task => task.Result))
 				{
-					cancellationToken.ThrowIfCancellationRequested();
-
 					if (needsLimit)
 					{
 						if (AddToLimitedList(queryParameters, tmp, distinction, includedCount, combinedResults)) return;
@@ -160,7 +158,7 @@ namespace NHibernate.Engine.Query
 					else
 						ArrayHelper.AddAll(combinedResults, tmp);
 				}
-			});
+			}, cancellationToken);
 		}
 
 		private void LogPerformList(QueryParameters queryParameters, ISessionImplementor session)

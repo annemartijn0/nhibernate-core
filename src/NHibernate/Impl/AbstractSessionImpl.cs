@@ -3,7 +3,8 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Data;using System.Data.Common;
+using System.Data;
+using System.Data.Common;
 using NHibernate.AdoNet;
 using NHibernate.Cache;
 using NHibernate.Collection;
@@ -21,7 +22,7 @@ using NHibernate.Type;
 
 namespace NHibernate.Impl
 {
-	
+
 
 	/// <summary> Functionality common to stateless and stateful sessions </summary>
 	[Serializable]
@@ -35,7 +36,8 @@ namespace NHibernate.Impl
 
 		public ITransactionContext TransactionContext
 		{
-			get; set;
+			get;
+			set;
 		}
 
 		private bool isAlreadyDisposed;
@@ -120,7 +122,7 @@ namespace NHibernate.Impl
 
 		public virtual IList List(IQueryExpression queryExpression, QueryParameters parameters)
 		{
-			var results = (IList) typeof (List<>).MakeGenericType(queryExpression.Type)
+			var results = (IList)typeof(List<>).MakeGenericType(queryExpression.Type)
 												 .GetConstructor(System.Type.EmptyTypes)
 												 .Invoke(null);
 			List(queryExpression, parameters, results);
@@ -148,6 +150,24 @@ namespace NHibernate.Impl
 				List(query, parameters, results);
 				return results;
 			}
+		}
+
+		public virtual Task<IList<T>> ListAsync<T>(IQueryExpression query, QueryParameters parameters, CancellationToken cancellationToken)
+		{
+			var sessionIdLoggingContext = new SessionIdLoggingContext(SessionId);
+			var results = new List<T>();
+			return ListAsync(query, parameters, results, cancellationToken)
+				.ContinueWith<IList<T>>(task =>
+				{
+					try
+					{
+						return results;
+					}
+					finally
+					{
+						sessionIdLoggingContext.Dispose();
+					}
+				});
 		}
 
 		public virtual IList<T> List<T>(CriteriaImpl criteria)
@@ -208,6 +228,19 @@ namespace NHibernate.Impl
 			}
 		}
 
+		public virtual Task ListAsync(NativeSQLQuerySpecification spec, QueryParameters queryParameters, IList results, CancellationToken cancellationToken)
+		{
+			var sessionIdLoggingContext = new SessionIdLoggingContext(SessionId);
+			var query = new SQLCustomQuery(
+				spec.SqlQueryReturns,
+				spec.QueryString,
+				spec.QuerySpaces,
+				Factory);
+
+			return ListCustomQueryAsync(query, queryParameters, results, cancellationToken)
+				.ContinueWith(task => sessionIdLoggingContext.Dispose());
+		}
+
 		public virtual IList<T> List<T>(NativeSQLQuerySpecification spec, QueryParameters queryParameters)
 		{
 			using (new SessionIdLoggingContext(SessionId))
@@ -218,7 +251,28 @@ namespace NHibernate.Impl
 			}
 		}
 
+		public virtual Task<IList<T>> ListAsync<T>(NativeSQLQuerySpecification spec, QueryParameters queryParameters,
+			CancellationToken cancellationToken)
+		{
+			var sessionIdLoggingContext = new SessionIdLoggingContext(SessionId);
+			var results = new List<T>();
+			return ListAsync(spec, queryParameters, results, cancellationToken)
+				.ContinueWith<IList<T>>(task =>
+				{
+					try
+					{
+						return results;
+					}
+					finally
+					{
+						sessionIdLoggingContext.Dispose();
+					}
+				});
+		}
+
 		public abstract void ListCustomQuery(ICustomQuery customQuery, QueryParameters queryParameters, IList results);
+
+		public abstract Task ListCustomQueryAsync(ICustomQuery customQuery, QueryParameters queryParameters, IList results, CancellationToken cancellationToken);
 
 		public virtual IList<T> ListCustomQuery<T>(ICustomQuery customQuery, QueryParameters queryParameters)
 		{
@@ -257,7 +311,7 @@ namespace NHibernate.Impl
 		{
 			return GetQueries(query.ToQueryExpression(), scalar);
 		}
-		
+
 		public abstract IQueryTranslator[] GetQueries(IQueryExpression query, bool scalar);
 		public abstract IInterceptor Interceptor { get; }
 		public abstract EventListeners Listeners { get; }

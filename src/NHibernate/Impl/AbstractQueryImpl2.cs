@@ -157,7 +157,32 @@ namespace NHibernate.Impl
 
 		public override Task<IList<T>> ListAsync<T>(CancellationToken cancellationToken)
 		{
-			throw new NotImplementedException();
+			if (cancellationToken.IsCancellationRequested)
+			{
+				return CanceledTask<IList<T>>();
+			}
+			VerifyParameters();
+			var namedParams = NamedParams;
+			Before();
+			return Session.ListAsync<T>(ExpandParameters(namedParams), GetQueryParameters(namedParams), cancellationToken)
+				.ContinueWith(task =>
+				{
+					try
+					{
+						return task.Result;
+					}
+					finally
+					{
+						After();
+					}
+				});
+		}
+
+		private static Task<T> CanceledTask<T>()
+		{
+			var taskCompletionSource = new TaskCompletionSource<T>();
+			taskCompletionSource.SetCanceled();
+			return taskCompletionSource.Task;
 		}
 
 		/// <summary> 

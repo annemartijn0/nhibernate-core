@@ -128,6 +128,11 @@ namespace NHibernate.Engine
 		IList<T> List<T>(IQueryExpression queryExpression, QueryParameters queryParameters);
 
 		/// <summary>
+		/// Asynchronous version of <see cref="List{T}(IQueryExpression,QueryParameters)" />
+		/// </summary>
+		Task<IList<T>> ListAsync<T>(IQueryExpression queryExpression, QueryParameters queryParameters, CancellationToken cancellationToken);
+
+		/// <summary>
 		/// Strongly-typed version of <see cref="List(CriteriaImpl)" />
 		/// </summary>
 		IList<T> List<T>(CriteriaImpl criteria);
@@ -225,13 +230,23 @@ namespace NHibernate.Engine
 
 		void List(NativeSQLQuerySpecification spec, QueryParameters queryParameters, IList results);
 
+		Task ListAsync(NativeSQLQuerySpecification spec, QueryParameters queryParameters, IList results, CancellationToken cancellationToken);
+
 		/// <summary>
 		/// Strongly-typed version of <see cref="List(NativeSQLQuerySpecification, QueryParameters)" />
 		/// </summary>
 		IList<T> List<T>(NativeSQLQuerySpecification spec, QueryParameters queryParameters);
 
+		/// <summary>
+		/// Asynchronous version of <see cref="List{T}(NativeSQLQuerySpecification, QueryParameters)"/>.
+		/// </summary>
+		Task<IList<T>> ListAsync<T>(NativeSQLQuerySpecification spec, QueryParameters queryParameters, CancellationToken cancellationToken);
+
 		/// <summary> Execute an SQL Query</summary>
 		void ListCustomQuery(ICustomQuery customQuery, QueryParameters queryParameters, IList results);
+
+		/// <summary>Asynchronous version of <see cref="ListCustomQuery(ICustomQuery, QueryParameters, IList)"/></summary>
+		Task ListCustomQueryAsync(ICustomQuery customQuery, QueryParameters queryParameters, IList results, CancellationToken cancellationToken);
 
 		IList<T> ListCustomQuery<T>(ICustomQuery customQuery, QueryParameters queryParameters);
 

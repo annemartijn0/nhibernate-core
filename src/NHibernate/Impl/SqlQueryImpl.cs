@@ -187,7 +187,25 @@ namespace NHibernate.Impl
 
 		public override Task<IList<T>> ListAsync<T>(CancellationToken cancellationToken)
 		{
-			throw new NotImplementedException();
+			VerifyParameters();
+			IDictionary<string, TypedValue> namedParams = NamedParams;
+			NativeSQLQuerySpecification spec = GenerateQuerySpecification(namedParams);
+			QueryParameters qp = GetQueryParameters(namedParams);
+
+			Before();
+
+			return Session.ListAsync<T>(spec, qp, cancellationToken)
+				.ContinueWith(task =>
+				{
+					try
+					{
+						return task.Result;
+					}
+					finally
+					{
+						After();
+					}
+				});
 		}
 
 		public NativeSQLQuerySpecification GenerateQuerySpecification(IDictionary<string, TypedValue> parameters)
@@ -303,7 +321,7 @@ namespace NHibernate.Impl
 				{
 					if (rtn is NativeSQLQueryScalarReturn)
 					{
-						NativeSQLQueryScalarReturn scalar = (NativeSQLQueryScalarReturn) rtn;
+						NativeSQLQueryScalarReturn scalar = (NativeSQLQueryScalarReturn)rtn;
 						if (scalar.Type == null)
 						{
 							autoDiscoverTypes = true;
@@ -322,7 +340,7 @@ namespace NHibernate.Impl
 
 		public override int ExecuteUpdate()
 		{
-			IDictionary<string,TypedValue> namedParams = NamedParams;
+			IDictionary<string, TypedValue> namedParams = NamedParams;
 			Before();
 			try
 			{

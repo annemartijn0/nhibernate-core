@@ -653,7 +653,7 @@ namespace NHibernate.Impl
 
 			bool success = false;
 			dontFlushFromFind++; //stops flush being called multiple times if this method is recursively called
-				
+
 			return plan.PerformListAsync(queryParameters, this, results, cancellationToken)
 				.ContinueWith(task =>
 				{
@@ -666,20 +666,28 @@ namespace NHibernate.Impl
 					{
 						foreach (var exception in aggregateException.InnerExceptions)
 						{
-							if (exception is HibernateException)
+							if (IsHibernateOrTaskCanceledException(exception))
 							{
-								// Do not call Convert on HibernateExceptions
 								throw;
 							}
-							throw Convert(exception, "Could not execute query");
+							else
+							{
+								throw Convert(exception, "Could not execute query");
+							}
 						}
 					}
 					finally
 					{
 						dontFlushFromFind--;
 						AfterOperation(success);
+						sessionIdLoggingContext.Dispose();
 					}
 				});
+		}
+
+		private static bool IsHibernateOrTaskCanceledException(Exception exception)
+		{
+			return exception is HibernateException || exception is TaskCanceledException;
 		}
 
 		private IQueryExpressionPlan QueryExpressionPlan(IQueryExpression queryExpression, QueryParameters queryParameters)
@@ -2120,6 +2128,32 @@ namespace NHibernate.Impl
 					AfterOperation(success);
 				}
 			}
+		}
+
+		public override Task ListCustomQueryAsync(ICustomQuery customQuery, QueryParameters queryParameters, IList results, CancellationToken cancellationToken)
+		{
+			var sessionIdLoggingContext = new SessionIdLoggingContext(SessionId);
+			CheckAndUpdateSessionStatus();
+
+			CustomLoader loader = new CustomLoader(customQuery, Factory);
+			AutoFlushIfRequired(loader.QuerySpaces);
+
+			bool success = false;
+			dontFlushFromFind++;
+			return loader.ListAsync(this, queryParameters, cancellationToken).ContinueWith(task =>
+			{
+				try
+				{
+					ArrayHelper.AddAll(results, task.Result);
+					success = true;
+				}
+				finally
+				{
+					dontFlushFromFind--;
+					AfterOperation(success);
+					sessionIdLoggingContext.Dispose();
+				}
+			});
 		}
 
 		/// <summary></summary>
