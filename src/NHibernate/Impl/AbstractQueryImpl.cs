@@ -947,6 +947,8 @@ namespace NHibernate.Impl
 		public abstract Task<IList> ListAsync(CancellationToken cancellationToken);
 		public abstract void List(IList results);
 		public abstract IList<T> List<T>();
+		public abstract Task<IList<T>> ListAsync<T>();
+		public abstract Task<IList<T>> ListAsync<T>(CancellationToken cancellationToken);
 		public T UniqueResult<T>()
 		{
 			object result = UniqueResult();

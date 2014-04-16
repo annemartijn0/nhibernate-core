@@ -180,6 +180,16 @@ namespace NHibernate.Impl
 			}
 		}
 
+		public override Task<IList<T>> ListAsync<T>()
+		{
+			return ListAsync<T>(CancellationToken.None);
+		}
+
+		public override Task<IList<T>> ListAsync<T>(CancellationToken cancellationToken)
+		{
+			throw new NotImplementedException();
+		}
+
 		public NativeSQLQuerySpecification GenerateQuerySpecification(IDictionary<string, TypedValue> parameters)
 		{
 			return new NativeSQLQuerySpecification(

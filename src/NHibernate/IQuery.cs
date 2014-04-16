@@ -167,6 +167,17 @@ namespace NHibernate
 		IList<T> List<T>();
 
 		/// <summary>
+		/// Asynchronous version of <see cref="List{T}()"/>.
+		/// </summary>
+		Task<IList<T>> ListAsync<T>();
+
+		/// <summary>
+		/// Asynchronous version of <see cref="List{T}()"/>.
+		/// </summary>
+		/// <param name="cancellationToken">Token to cancel the request.</param>
+		Task<IList<T>> ListAsync<T>(CancellationToken cancellationToken);
+
+		/// <summary>
 		/// Convenience method to return a single instance that matches
 		/// the query, or null if the query returns no results.
 		/// </summary>

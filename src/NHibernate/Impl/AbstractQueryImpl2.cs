@@ -150,6 +150,16 @@ namespace NHibernate.Impl
 			}
 		}
 
+		public override Task<IList<T>> ListAsync<T>()
+		{
+			return ListAsync<T>(CancellationToken.None);
+		}
+
+		public override Task<IList<T>> ListAsync<T>(CancellationToken cancellationToken)
+		{
+			throw new NotImplementedException();
+		}
+
 		/// <summary> 
 		/// Warning: adds new parameters to the argument by side-effect, as well as mutating the query expression tree!
 		/// </summary>
