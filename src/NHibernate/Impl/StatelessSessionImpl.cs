@@ -142,7 +142,6 @@ namespace NHibernate.Impl
 
 		public override Task ListAsync(IQueryExpression queryExpression, QueryParameters queryParameters, IList results, CancellationToken cancellationToken)
 		{
-			throw new NotImplementedException();
 			var sessionLoggingContext = new SessionIdLoggingContext(SessionId);
 			var plan = QueryExpressionPlan(queryExpression, queryParameters);
 

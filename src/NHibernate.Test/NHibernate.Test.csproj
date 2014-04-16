@@ -1217,6 +1217,7 @@
     <Compile Include="Stateless\Fetching\Task.cs" />
     <Compile Include="Stateless\Fetching\User.cs" />
     <Compile Include="Stateless\Org.cs" />
+    <Compile Include="Stateless\StatelessSessionQueryFixtureAsync.cs" />
     <Compile Include="Stateless\StatelessSessionQueryFixture.cs" />
     <Compile Include="Subselect\ClassSubselectFixture.cs" />
     <Compile Include="Subselect\Domain.cs" />
