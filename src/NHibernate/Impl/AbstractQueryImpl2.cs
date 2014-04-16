@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
@@ -98,19 +99,25 @@ namespace NHibernate.Impl
 			VerifyParameters();
 			var namedParams = NamedParams;
 			Before();
-			
-				return Session.ListAsync(ExpandParameters(namedParams), GetQueryParameters(namedParams), cancellationToken)
-					.ContinueWith(task =>
+
+			if (cancellationToken.IsCancellationRequested)
+			{
+				var taskCompletionSource = new TaskCompletionSource<IList>();
+				taskCompletionSource.SetCanceled();
+				return taskCompletionSource.Task;
+			}
+			return Session.ListAsync(ExpandParameters(namedParams), GetQueryParameters(namedParams), cancellationToken)
+				.ContinueWith(task =>
+				{
+					try
 					{
-						try
-						{
-							return task.Result;
-						}
-						finally
-						{
-							After();
-						}
-					});
+						return task.Result;
+					}
+					finally
+					{
+						After();
+					}
+				});
 		}
 
 		public override void List(IList results)

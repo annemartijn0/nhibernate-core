@@ -64,6 +64,55 @@ namespace NHibernate.Test.Hql
 
 		[Test]
 		[ExpectedException(typeof(AggregateException))]
+		public void ListAsyncShouldReturnCanceledTaskWhenPassedCanceledToken()
+		{
+			// Arrange
+			var cancellationTokenSource = new CancellationTokenSource();
+			cancellationTokenSource.Cancel();
+			const string hql = "from Animal";
+			Task result;
+
+			using (ISession session = OpenSession())
+			{
+				// Act
+				result = session.CreateQuery(hql).ListAsync(cancellationTokenSource.Token);
+			}
+
+			// Assert
+			Assert.That(result.IsCanceled);
+			result.Wait();
+		}
+
+		[Test]
+		public void ListAsyncShouldThrowExceptionWhenCancellationTokenIsCanceled()
+		{
+			// Arrange
+			var cancellationTokenSource = new CancellationTokenSource();
+			Task task;
+			const string hql = "from Animal";
+
+			using (ISession session = OpenSession())
+			{
+				// Act
+				task = session.CreateQuery(hql).ListAsync(cancellationTokenSource.Token);
+				cancellationTokenSource.Cancel();
+			}
+
+			try
+			{
+				task.Wait();
+				Assert.Fail("Should have thrown exception");
+			}
+			catch (AggregateException aggregateException)
+			{
+				// Assert
+				Assert.That(aggregateException.Flatten().InnerExceptions.Count, Is.EqualTo(1));
+				Assert.That(aggregateException.Flatten().InnerExceptions[0], Is.TypeOf(typeof(TaskCanceledException)));
+			}
+		}
+
+		[Test]
+		[ExpectedException(typeof(AggregateException))]
 		public void UniqueResultAsyncShouldReturnCanceledTaskWhenPassedCanceledToken()
 		{
 			// Arrange

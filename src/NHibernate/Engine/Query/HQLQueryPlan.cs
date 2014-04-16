@@ -151,6 +151,8 @@ namespace NHibernate.Engine.Query
 			{
 				foreach (IList tmp in tasks.Select(task => task.Result))
 				{
+					cancellationToken.ThrowIfCancellationRequested();
+
 					if (needsLimit)
 					{
 						if (AddToLimitedList(queryParameters, tmp, distinction, includedCount, combinedResults)) return;
