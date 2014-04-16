@@ -388,6 +388,26 @@ namespace NHibernate.Test.Hql
 		}
 
 		[Test]
+		public void AggregateSumNH1100Async()
+		{
+			// Arrange
+			using (ISession s = OpenSession())
+			{
+				Animal a1 = new Animal("a1", 20);
+				Animal a2 = new Animal("a1", 10);
+				s.Save(a1);
+				s.Save(a2);
+				s.Flush();
+			}
+			using (ISession s = OpenSession())
+			{
+				// Act && Assert
+				Assert.Throws<QueryException>(() => 
+					s.CreateQuery("select distinct new SummaryItem(a.Description, sum(BodyWeight)) from Animal a").ListAsync<SummaryItem>().Wait());
+			}
+		}
+
+		[Test]
 		public void AggregatesAndMathNH959Async()
 		{
 			// Arrange
