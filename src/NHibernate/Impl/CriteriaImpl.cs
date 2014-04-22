@@ -326,13 +326,13 @@ namespace NHibernate.Impl
 
 		private static T UniqueResultOrDefault<T>(object result)
 		{
-			if (result == null && typeof (T).IsValueType)
+			if (result == null && typeof(T).IsValueType)
 			{
 				return default(T);
 			}
 			else
 			{
-				return (T) result;
+				return (T)result;
 			}
 		}
 
@@ -476,11 +476,19 @@ namespace NHibernate.Impl
 		{
 			if (!session.Factory.ConnectionProvider.Driver.SupportsMultipleQueries)
 			{
-				return new AwaitableEnumerableWrapper<T>(List<T>());
+				return DelayedEnumeratorUsingListAndListAsync<T>();
 			}
 
 			session.FutureCriteriaBatch.Add<T>(this);
 			return session.FutureCriteriaBatch.GetEnumerator<T>();
+		}
+
+		private DelayedEnumerator<T> DelayedEnumeratorUsingListAndListAsync<T>()
+		{
+			return new DelayedEnumerator<T>(
+				List<T>,
+				cancellationToken => ListAsync<T>(cancellationToken)
+					.ContinueWith<IEnumerable<T>>(task => task.Result, cancellationToken));
 		}
 
 		public object UniqueResult()

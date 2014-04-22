@@ -99,7 +99,6 @@
     <Compile Include="AdoNet\MySqlClientSqlCommandSet.cs" />
     <Compile Include="AssemblyInfo.cs" />
     <Compile Include="AssertionFailure.cs" />
-    <Compile Include="Util\AwaitableEnumerableWrapper.cs" />
     <Compile Include="Bytecode\DefaultProxyFactoryFactory.cs" />
     <Compile Include="Cache\Access\ISoftLock.cs" />
     <Compile Include="Cache\CachedItem.cs" />
