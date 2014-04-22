@@ -451,25 +451,11 @@ namespace NHibernate.Impl
 		{
 			if (!session.Factory.ConnectionProvider.Driver.SupportsMultipleQueries)
 			{
-				return NonBatchingFutureValue<T>();
+				return new FutureValue<T>(List<T>, ListAsEnumerableAsync<T>);
 			}
 
 			session.FutureCriteriaBatch.Add<T>(this);
 			return session.FutureCriteriaBatch.GetFutureValue<T>();
-		}
-
-		private FutureValue<T> NonBatchingFutureValue<T>()
-		{
-			return new FutureValue<T>(List<T>,
-				cancellationToken =>
-				{
-					var taskCompletionSource = new TaskCompletionSource<IEnumerable<T>>();
-					if (cancellationToken.IsCancellationRequested)
-						taskCompletionSource.SetCanceled();
-					else
-						taskCompletionSource.SetResult(List<T>());
-					return taskCompletionSource.Task;
-				});
 		}
 
 		public IAwaitableEnumerable<T> Future<T>()
