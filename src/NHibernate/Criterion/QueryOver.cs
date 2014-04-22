@@ -78,9 +78,9 @@ namespace NHibernate.Criterion
 			return criteria.List<U>();
 		}
 
-		private Task<IList<U>> ListAsync<U>()
+		private Task<IList<U>> ListAsync<U>(CancellationToken cancellationToken)
 		{
-			return criteria.ListAsync<U>();
+			return criteria.ListAsync<U>(cancellationToken);
 		}
 
 		private TRoot SingleOrDefault()
@@ -244,7 +244,10 @@ namespace NHibernate.Criterion
 		{ return List<U>(); }
 
 		Task<IList<U>> IQueryOver<TRoot>.ListAsync<U>()
-		{ return ListAsync<U>(); }
+		{ return ListAsync<U>(CancellationToken.None); }
+
+		Task<IList<U>> IQueryOver<TRoot>.ListAsync<U>(CancellationToken cancellationToken)
+		{ return ListAsync<U>(cancellationToken); }
 
 		IQueryOver<TRoot,TRoot> IQueryOver<TRoot>.ToRowCountQuery()
 		{ return ToRowCountQuery(); }
