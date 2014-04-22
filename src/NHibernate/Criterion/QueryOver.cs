@@ -88,9 +88,9 @@ namespace NHibernate.Criterion
 			return criteria.UniqueResult<TRoot>();
 		}
 
-		private Task<TRoot> SingleOrDefaultAsync()
+		private Task<TRoot> SingleOrDefaultAsync(CancellationToken cancellationToken)
 		{
-			return criteria.UniqueResultAsync<TRoot>();
+			return criteria.UniqueResultAsync<TRoot>(cancellationToken);
 		}
 
 		private U SingleOrDefault<U>()
@@ -98,9 +98,9 @@ namespace NHibernate.Criterion
 			return criteria.UniqueResult<U>();
 		}
 
-		private Task<U> SingleOrDefaultAsync<U>()
+		private Task<U> SingleOrDefaultAsync<U>(CancellationToken cancellationToken)
 		{
-			return criteria.UniqueResultAsync<U>();
+			return criteria.UniqueResultAsync<U>(cancellationToken);
 		}
 
 		private IAwaitableEnumerable<TRoot> Future()
@@ -265,13 +265,19 @@ namespace NHibernate.Criterion
 		{ return SingleOrDefault(); }
 
 		Task<TRoot> IQueryOver<TRoot>.SingleOrDefaultAsync()
-		{ return SingleOrDefaultAsync(); }
+		{ return SingleOrDefaultAsync(CancellationToken.None); }
+
+		Task<TRoot> IQueryOver<TRoot>.SingleOrDefaultAsync(CancellationToken cancellationToken)
+		{ return SingleOrDefaultAsync(cancellationToken); }
 
 		U IQueryOver<TRoot>.SingleOrDefault<U>()
 		{ return SingleOrDefault<U>(); }
 
 		Task<U> IQueryOver<TRoot>.SingleOrDefaultAsync<U>()
-		{ return SingleOrDefaultAsync<U>(); }
+		{ return SingleOrDefaultAsync<U>(CancellationToken.None); }
+
+		Task<U> IQueryOver<TRoot>.SingleOrDefaultAsync<U>(CancellationToken cancellationToken)
+		{ return SingleOrDefaultAsync<U>(cancellationToken); }
 
 		IAwaitableEnumerable<TRoot> IQueryOver<TRoot>.Future()
 		{ return Future(); }

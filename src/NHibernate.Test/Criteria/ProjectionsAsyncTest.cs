@@ -1,7 +1,11 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Threading;
+using System.Threading.Tasks;
 using NHibernate.Criterion;
 using NHibernate.Dialect;
+using NHibernate.Test.Criteria.Lambda;
 using NUnit.Framework;
 
 namespace NHibernate.Test.Criteria
@@ -48,6 +52,55 @@ namespace NHibernate.Test.Criteria
 			{
 				session.Delete("from System.Object");
 				session.Flush();
+			}
+		}
+
+		[Test]
+		[ExpectedException(typeof(AggregateException))]
+		public void UniqueResultAsync_ShouldReturnCanceledTaskWhenPassedCanceledToken()
+		{
+			// Arrange
+			var cancellationTokenSource = new CancellationTokenSource();
+			cancellationTokenSource.Cancel();
+			Task result;
+
+			using (ISession session = OpenSession())
+			{
+				// Act
+				result = session.CreateCriteria(typeof (Student))
+					.UniqueResultAsync<string>(cancellationTokenSource.Token);
+			}
+
+			// Assert
+			Assert.That(result.IsCanceled);
+			result.Wait();
+		}
+
+		[Test]
+		public void UniqueResultAsync_ShouldThrowExceptionWhenCancellationTokenIsCanceled()
+		{
+			// Arrange
+			var cancellationTokenSource = new CancellationTokenSource();
+			Task task;
+			using (ISession session = OpenSession())
+			{
+				// Act
+				task = session.CreateCriteria(typeof(Student))
+					.UniqueResultAsync<string>(cancellationTokenSource.Token);
+
+				cancellationTokenSource.Cancel();
+			}
+
+			try
+			{
+				task.Wait();
+				Assert.Fail("Should have thrown exception");
+			}
+			catch (AggregateException aggregateException)
+			{
+				// Assert
+				Assert.That(aggregateException.Flatten().InnerExceptions.Count, Is.EqualTo(1));
+				Assert.That(aggregateException.Flatten().InnerExceptions[0], Is.TypeOf(typeof(TaskCanceledException)));
 			}
 		}
 

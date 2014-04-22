@@ -120,6 +120,17 @@ namespace NHibernate
 		Task<TRoot> SingleOrDefaultAsync();
 
 		/// <summary>
+		/// Convenience method to asynchronously return a single instance that matches
+		/// the query, or null if the query returns no results.
+		/// </summary>
+		/// <param name="cancellationToken">Token to cancel the request.</param>
+		/// <returns>A <see cref="Task"/> containing the single result or <see langword="null" /></returns>
+		/// <exception cref="HibernateException">
+		/// If there is more than one matching result
+		/// </exception>
+		Task<TRoot> SingleOrDefaultAsync(CancellationToken cancellationToken);
+
+		/// <summary>
 		/// Override type of <see cref="SingleOrDefault()" />.
 		/// </summary>
 		U SingleOrDefault<U>();
@@ -128,6 +139,12 @@ namespace NHibernate
 		/// Override type of <see cref="SingleOrDefaultAsync()" />.
 		/// </summary>
 		Task<U> SingleOrDefaultAsync<U>();
+
+		/// <summary>
+		/// Override type of <see cref="SingleOrDefaultAsync()" />.
+		/// </summary>
+		/// <param name="cancellationToken">Token to cancel the request.</param>
+		Task<U> SingleOrDefaultAsync<U>(CancellationToken cancellationToken);
 
 		/// <summary>
 		/// Get a enumerable that when enumerated will execute

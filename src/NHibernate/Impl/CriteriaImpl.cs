@@ -262,8 +262,14 @@ namespace NHibernate.Impl
 
 		public Task<IList> ListAsync()
 		{
+			return ListAsync(CancellationToken.None);
+		}
+
+		public Task<IList> ListAsync(CancellationToken cancellationToken)
+		{
 			var results = new List<object>();
-			return ListAsync(results).ContinueWith<IList>(_ => results);
+			return ListAsync(results, cancellationToken)
+				.ContinueWith<IList>(_ => results, cancellationToken);
 		}
 
 		public void List(IList results)
@@ -319,8 +325,14 @@ namespace NHibernate.Impl
 
 		public Task<T> UniqueResultAsync<T>()
 		{
-			return UniqueResultAsync()
-				.ContinueWith(task => UniqueResultOrDefault<T>(task.Result));
+			return UniqueResultAsync<T>(CancellationToken.None);
+
+		}
+
+		public Task<T> UniqueResultAsync<T>(CancellationToken cancellationToken)
+		{
+			return UniqueResultAsync(cancellationToken)
+				.ContinueWith(task => UniqueResultOrDefault<T>(task.Result), cancellationToken);
 
 		}
 
@@ -482,8 +494,13 @@ namespace NHibernate.Impl
 
 		public Task<object> UniqueResultAsync()
 		{
-			return ListAsync()
-				.ContinueWith(task => AbstractQueryImpl.UniqueElement(task.Result));
+			return UniqueResultAsync(CancellationToken.None);
+		}
+
+		public Task<object> UniqueResultAsync(CancellationToken cancellationToken)
+		{
+			return ListAsync(cancellationToken)
+				.ContinueWith(task => AbstractQueryImpl.UniqueElement(task.Result), cancellationToken);
 		}
 
 		public ICriteria SetLockMode(LockMode lockMode)
@@ -848,6 +865,11 @@ namespace NHibernate.Impl
 				return root.ListAsync();
 			}
 
+			public Task<IList> ListAsync(CancellationToken cancellationToken)
+			{
+				return root.ListAsync(cancellationToken);
+			}
+
 			public IFutureValue<T> FutureValue<T>()
 			{
 				return root.FutureValue<T>();
@@ -896,8 +918,13 @@ namespace NHibernate.Impl
 
 			public Task<T> UniqueResultAsync<T>()
 			{
-				return UniqueResultAsync()
-					.ContinueWith(task => UniqueResultOrException<T>(task.Result));
+				return UniqueResultAsync<T>(CancellationToken.None);
+			}
+
+			public Task<T> UniqueResultAsync<T>(CancellationToken cancellationToken)
+			{
+				return UniqueResultAsync(cancellationToken)
+					.ContinueWith(task => UniqueResultOrException<T>(task.Result), cancellationToken);
 			}
 
 			private static T UniqueResultOrException<T>(object result)
@@ -926,6 +953,11 @@ namespace NHibernate.Impl
 			public Task<object> UniqueResultAsync()
 			{
 				return root.UniqueResultAsync();
+			}
+
+			public Task<object> UniqueResultAsync(CancellationToken cancellationToken)
+			{
+				return root.UniqueResultAsync(cancellationToken);
 			}
 
 			public ICriteria SetFetchMode(string associationPath, FetchMode mode)

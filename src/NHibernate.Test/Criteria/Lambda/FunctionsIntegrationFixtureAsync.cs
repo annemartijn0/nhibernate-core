@@ -140,6 +140,55 @@ namespace NHibernate.Test.Criteria.Lambda
 		}
 
 		[Test]
+		[ExpectedException(typeof(AggregateException))]
+		public void SingleOrDefaultAsync_ShouldReturnCanceledTaskWhenPassedCanceledToken()
+		{
+			// Arrange
+			var cancellationTokenSource = new CancellationTokenSource();
+			cancellationTokenSource.Cancel();
+			Task result;
+
+			using (ISession session = OpenSession())
+			{
+				// Act
+				result = session.QueryOver<Person>()
+					.SingleOrDefaultAsync<object>(cancellationTokenSource.Token);
+			}
+
+			// Assert
+			Assert.That(result.IsCanceled);
+			result.Wait();
+		}
+
+		[Test]
+		public void SingleOrDefaultAsync_ShouldThrowExceptionWhenCancellationTokenIsCanceled()
+		{
+			// Arrange
+			var cancellationTokenSource = new CancellationTokenSource();
+			Task task;
+			using (ISession session = OpenSession())
+			{
+				// Act
+				task = session.QueryOver<Person>()
+					.SingleOrDefaultAsync<object>(cancellationTokenSource.Token);
+
+				cancellationTokenSource.Cancel();
+			}
+
+			try
+			{
+				task.Wait();
+				Assert.Fail("Should have thrown exception");
+			}
+			catch (AggregateException aggregateException)
+			{
+				// Assert
+				Assert.That(aggregateException.Flatten().InnerExceptions.Count, Is.EqualTo(1));
+				Assert.That(aggregateException.Flatten().InnerExceptions[0], Is.TypeOf(typeof(TaskCanceledException)));
+			}
+		}
+
+		[Test]
 		public void YearPartSingleOrDefaultAsync()
 		{
 			// Arrange

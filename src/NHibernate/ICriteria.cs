@@ -296,6 +296,13 @@ namespace NHibernate
 		Task<IList> ListAsync();
 
 		/// <summary>
+		/// Asynchronously get the results
+		/// </summary>
+		/// <param name="cancellationToken">Token to cancel the request.</param>
+		/// <returns></returns>
+		Task<IList> ListAsync(CancellationToken cancellationToken);
+
+		/// <summary>
 		/// Convenience method to return a single instance that matches
 		/// the query, or null if the query returns no results.
 		/// </summary>
@@ -314,6 +321,17 @@ namespace NHibernate
 		/// If there is more than one matching result
 		/// </exception>
 		Task<object> UniqueResultAsync();
+
+		/// <summary>
+		/// Convenience method to asynchronously return a single instance that matches
+		/// the query, or null if the query returns no results.
+		/// </summary>
+		/// <param name="cancellationToken">Token to cancel the request.</param>
+		/// <returns>A <see cref="Task"/>, that contains the single result or <see langword="null" /></returns>
+		/// <exception cref="HibernateException">
+		/// If there is more than one matching result
+		/// </exception>
+		Task<object> UniqueResultAsync(CancellationToken cancellationToken);
 
 		/// <summary>
 		/// Get a enumerable that when enumerated will execute
@@ -412,6 +430,12 @@ namespace NHibernate
 		/// Strongly-typed version of <see cref="UniqueResultAsync()" />.
 		/// </summary>
 		Task<T> UniqueResultAsync<T>();
+
+		/// <summary>
+		/// Strongly-typed version of <see cref="UniqueResultAsync(CancellationToken)" />.
+		/// </summary>
+		/// <param name="cancellationToken">Token to cancel the request.</param>
+		Task<T> UniqueResultAsync<T>(CancellationToken cancellationToken);
 
 		/// <summary>
 		/// Clear all orders from criteria.
