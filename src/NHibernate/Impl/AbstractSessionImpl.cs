@@ -161,6 +161,7 @@ namespace NHibernate.Impl
 				{
 					try
 					{
+						task.Wait();
 						return results;
 					}
 					finally

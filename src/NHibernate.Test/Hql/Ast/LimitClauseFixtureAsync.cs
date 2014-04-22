@@ -70,6 +70,35 @@ namespace NHibernate.Test.Hql.Ast
 		}
 
 		[Test]
+		public void ListAsyncT_ShouldThrowExceptionWhenCancellationTokenIsCanceled()
+		{
+			// Arrange
+			var cancellationTokenSource = new CancellationTokenSource();
+			const string hql = "from Human";
+			Task task;
+
+			using (ISession session = OpenSession())
+			{
+				// Act
+				task = session.CreateQuery(hql).ListAsync<Human>(cancellationTokenSource.Token);
+
+				cancellationTokenSource.Cancel();
+			}
+
+			try
+			{
+				task.Wait();
+				Assert.Fail("Should have thrown exception");
+			}
+			catch (AggregateException aggregateException)
+			{
+				// Assert
+				Assert.That(aggregateException.Flatten().InnerExceptions.Count, Is.EqualTo(1));
+				Assert.That(aggregateException.Flatten().InnerExceptions[0], Is.TypeOf(typeof(TaskCanceledException)));
+			}
+		}
+
+		[Test]
 		public void NoneAsync()
 		{
 			// Arrange
