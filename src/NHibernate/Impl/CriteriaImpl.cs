@@ -476,19 +476,17 @@ namespace NHibernate.Impl
 		{
 			if (!session.Factory.ConnectionProvider.Driver.SupportsMultipleQueries)
 			{
-				return DelayedEnumeratorUsingListAndListAsync<T>();
+				return new DelayedEnumerator<T>(List<T>, ListAsEnumerableAsync<T>);
 			}
 
 			session.FutureCriteriaBatch.Add<T>(this);
 			return session.FutureCriteriaBatch.GetEnumerator<T>();
 		}
 
-		private DelayedEnumerator<T> DelayedEnumeratorUsingListAndListAsync<T>()
+		private Task<IEnumerable<T>> ListAsEnumerableAsync<T>(CancellationToken cancellationToken)
 		{
-			return new DelayedEnumerator<T>(
-				List<T>,
-				cancellationToken => ListAsync<T>(cancellationToken)
-					.ContinueWith<IEnumerable<T>>(task => task.Result, cancellationToken));
+			return ListAsync<T>(cancellationToken)
+				.ContinueWith<IEnumerable<T>>(task => task.Result, cancellationToken);
 		}
 
 		public object UniqueResult()
