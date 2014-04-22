@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq.Expressions;
+using System.Threading;
 using System.Threading.Tasks;
 using NHibernate.Criterion;
 using NHibernate.Criterion.Lambda;
@@ -49,6 +50,13 @@ namespace NHibernate
 		/// </summary>
 		/// <returns>A <see cref="Task"/> containing a <see cref="IList{TRoot}"/> filled with the results.</returns>
 		Task<IList<TRoot>> ListAsync();
+
+		/// <summary>
+		/// Asynchronously get the results of the root type and fill the <see cref="IList{TRoot}"/>.
+		/// </summary>
+		/// <param name="cancellationToken">Token to cancel the request.</param>
+		/// <returns>A <see cref="Task"/> containing a <see cref="IList{TRoot}"/> filled with the results.</returns>
+		Task<IList<TRoot>> ListAsync(CancellationToken cancellationToken);
 
 		/// <summary>
 		/// Get the results of the root type and fill the <see cref="IList&lt;T&gt;"/>

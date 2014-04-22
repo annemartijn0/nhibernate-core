@@ -1,5 +1,7 @@
 using System;
 using System.Collections;
+using System.Threading;
+using System.Threading.Tasks;
 using NHibernate.Criterion;
 using NUnit.Framework;
 using SharpTestsEx;
@@ -39,6 +41,55 @@ namespace NHibernate.Test.Criteria.Lambda
 				s.Save(new Person { Name = "pP3", BirthDate = new DateTime(2007, 06, 05) });
 
 				t.Commit();
+			}
+		}
+
+		[Test]
+		[ExpectedException(typeof(AggregateException))]
+		public void QueryOverListAsync_ShouldReturnCanceledTaskWhenPassedCanceledToken()
+		{
+			// Arrange
+			var cancellationTokenSource = new CancellationTokenSource();
+			cancellationTokenSource.Cancel();
+			Task result;
+
+			using (ISession session = OpenSession())
+			{
+				// Act
+				result = session.QueryOver<Person>()
+					.ListAsync(cancellationTokenSource.Token);
+			}
+
+			// Assert
+			Assert.That(result.IsCanceled);
+			result.Wait();
+		}
+
+		[Test]
+		public void QueryOverListAsync_ShouldThrowExceptionWhenCancellationTokenIsCanceled()
+		{
+			// Arrange
+			var cancellationTokenSource = new CancellationTokenSource();
+			Task task;
+			using (ISession session = OpenSession())
+			{
+				// Act
+				task = session.QueryOver<Person>()
+					.ListAsync(cancellationTokenSource.Token);
+
+				cancellationTokenSource.Cancel();
+			}
+
+			try
+			{
+				task.Wait();
+				Assert.Fail("Should have thrown exception");
+			}
+			catch (AggregateException aggregateException)
+			{
+				// Assert
+				Assert.That(aggregateException.InnerExceptions.Count, Is.EqualTo(1));
+				Assert.That(aggregateException.InnerExceptions[0], Is.TypeOf(typeof(TaskCanceledException)));
 			}
 		}
 

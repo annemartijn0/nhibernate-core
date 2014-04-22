@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq.Expressions;
+using System.Threading;
 using System.Threading.Tasks;
 using NHibernate.Criterion.Lambda;
 using NHibernate.Engine;
@@ -67,9 +68,9 @@ namespace NHibernate.Criterion
 			return criteria.List<TRoot>();
 		}
 
-		private Task<IList<TRoot>> ListAsync()
+		private Task<IList<TRoot>> ListAsync(CancellationToken cancellationToken)
 		{
-			return criteria.ListAsync<TRoot>();
+			return criteria.ListAsync<TRoot>(cancellationToken);
 		}
 
 		private IList<U> List<U>()
@@ -234,7 +235,10 @@ namespace NHibernate.Criterion
 		{ return List(); }
 
 		Task<IList<TRoot>> IQueryOver<TRoot>.ListAsync()
-		{ return ListAsync(); }
+		{ return ListAsync(CancellationToken.None); }
+
+		Task<IList<TRoot>> IQueryOver<TRoot>.ListAsync(CancellationToken cancellationToken)
+		{ return ListAsync(cancellationToken); }
 
 		IList<U> IQueryOver<TRoot>.List<U>()
 		{ return List<U>(); }
