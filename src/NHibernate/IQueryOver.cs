@@ -111,6 +111,17 @@ namespace NHibernate
 		long RowCountInt64();
 
 		/// <summary>
+		/// Asynchronous version of <see cref="RowCountInt64()"/>.
+		/// </summary>
+		Task<long> RowCountInt64Async();
+
+		/// <summary>
+		/// Asynchronous version of <see cref="RowCountInt64()"/>.
+		/// </summary>
+		/// <param name="cancellationToken">Token to cancel the request.</param>
+		Task<long> RowCountInt64Async(CancellationToken cancellationToken);
+
+		/// <summary>
 		/// Convenience method to return a single instance that matches
 		/// the query, or null if the query returns no results.
 		/// </summary>
