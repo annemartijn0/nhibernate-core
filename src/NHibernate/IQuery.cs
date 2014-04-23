@@ -681,7 +681,7 @@ namespace NHibernate
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <returns></returns>
-		IEnumerable<T> Future<T>();
+		IAwaitableEnumerable<T> Future<T>();
 
 		/// <summary>
 		/// Get an IFutureValue instance, whose value can be retrieved through

@@ -884,11 +884,11 @@ namespace NHibernate.Impl
 			return this;
 		}
 
-		public IEnumerable<T> Future<T>()
+		public IAwaitableEnumerable<T> Future<T>()
 		{
 			if (!session.Factory.ConnectionProvider.Driver.SupportsMultipleQueries)
 			{
-				return List<T>();
+				return new DelayedEnumerator<T>(List<T>, ListAsEnumerableAsync<T>);
 			}
 
 			session.FutureQueryBatch.Add<T>(this);
@@ -899,21 +899,17 @@ namespace NHibernate.Impl
 		{
 			if (!session.Factory.ConnectionProvider.Driver.SupportsMultipleQueries)
 			{
-				return new FutureValue<T>(List<T>, ListAsTask<T>);
+				return new FutureValue<T>(List<T>, ListAsEnumerableAsync<T>);
 			}
 
 			session.FutureQueryBatch.Add<T>(this);
 			return session.FutureQueryBatch.GetFutureValue<T>();
 		}
 
-		private Task<IEnumerable<T>> ListAsTask<T>(CancellationToken cancellationToken)
+		private Task<IEnumerable<T>> ListAsEnumerableAsync<T>(CancellationToken cancellationToken)
 		{
-			var taskCompletionSource = new TaskCompletionSource<IEnumerable<T>>();
-			if (cancellationToken.IsCancellationRequested)
-				taskCompletionSource.SetCanceled();
-			else
-				taskCompletionSource.SetResult(List<T>());
-			return taskCompletionSource.Task;
+			return ListAsync<T>(cancellationToken)
+				.ContinueWith<IEnumerable<T>>(task => task.Result, cancellationToken);
 		}
 
 		/// <summary> Override the current session cache mode, just for this query.
