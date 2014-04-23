@@ -258,6 +258,12 @@ namespace NHibernate.Criterion
 		int IQueryOver<TRoot>.RowCount()
 		{ return ToRowCountQuery().SingleOrDefault<int>(); }
 
+		Task<int> IQueryOver<TRoot>.RowCountAsync()
+		{ return ((IQueryOver<TRoot>)this).RowCountAsync(CancellationToken.None); }
+
+		Task<int> IQueryOver<TRoot>.RowCountAsync(CancellationToken cancellationToken)
+		{ return ToRowCountQuery().SingleOrDefaultAsync<int>(cancellationToken); }
+
 		long IQueryOver<TRoot>.RowCountInt64()
 		{ return ToRowCountInt64Query().SingleOrDefault<long>(); }
 

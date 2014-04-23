@@ -95,6 +95,17 @@ namespace NHibernate
 		int RowCount();
 
 		/// <summary>
+		/// Asynchronous version of <see cref="RowCount()"/>.
+		/// </summary>
+		Task<int> RowCountAsync();
+
+		/// <summary>
+		/// Asynchronous version of <see cref="RowCount()"/>.
+		/// </summary>
+		/// <param name="cancellationToken">Token to cancel the request.</param>
+		Task<int> RowCountAsync(CancellationToken cancellationToken);
+
+		/// <summary>
 		/// Short for ToRowCountInt64Query().SingleOrDefault&lt;long&gt;()
 		/// </summary>
 		long RowCountInt64();

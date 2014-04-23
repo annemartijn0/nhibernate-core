@@ -1,19 +1,36 @@
 ﻿<?xml version="1.0" encoding="utf-8" standalone="no"?>
 <!--This file represents the results of running a test suite-->
-<test-results name="C:\Users\Annemartijn\Documents\GitHub\nhibernate-core\NHibernate.nunit" total="1" errors="0" failures="0" not-run="0" inconclusive="0" ignored="0" skipped="0" invalid="0" date="2014-04-15" time="15:25:58">
+<test-results name="C:\Users\Annemartijn\Documents\GitHub\nhibernate-core\NHibernate.nunit" total="10" errors="0" failures="0" not-run="0" inconclusive="0" ignored="0" skipped="0" invalid="0" date="2014-04-23" time="11:32:59">
   <environment nunit-version="2.6.3.13283" clr-version="2.0.50727.5477" os-version="Microsoft Windows NT 6.1.7601 Service Pack 1" platform="Win32NT" cwd="C:\Users\Annemartijn\Documents\GitHub\nhibernate-core" machine-name="ILIANLAPTOPWERK" user="Annemartijn" user-domain="IlianLaptopWerk" />
   <culture-info current-culture="nl-NL" current-uiculture="en-US" />
-  <test-suite type="Test Project" name="C:\Users\Annemartijn\Documents\GitHub\nhibernate-core\NHibernate.nunit" executed="True" result="Success" success="True" time="2.136" asserts="0">
+  <test-suite type="Test Project" name="C:\Users\Annemartijn\Documents\GitHub\nhibernate-core\NHibernate.nunit" executed="True" result="Success" success="True" time="8.103" asserts="0">
     <results>
-      <test-suite type="Assembly" name="C:\Users\Annemartijn\Documents\GitHub\nhibernate-core\src\NHibernate.TestDatabaseSetup\bin\Debug\NHibernate.TestDatabaseSetup.dll" executed="True" result="Success" success="True" time="0.540" asserts="0">
+      <test-suite type="Assembly" name="C:\Users\Annemartijn\Documents\GitHub\nhibernate-core\src\NHibernate.Test\bin\Debug-2.0\NHibernate.Test.dll" executed="True" result="Success" success="True" time="6.368" asserts="0">
         <results>
-          <test-suite type="Namespace" name="NHibernate" executed="True" result="Success" success="True" time="0.538" asserts="0">
+          <test-suite type="Namespace" name="NHibernate" executed="True" result="Success" success="True" time="6.349" asserts="0">
             <results>
-              <test-suite type="Namespace" name="TestDatabaseSetup" executed="True" result="Success" success="True" time="0.537" asserts="0">
+              <test-suite type="Namespace" name="Test" executed="True" result="Success" success="True" time="6.348" asserts="0">
                 <results>
-                  <test-suite type="TestFixture" name="DatabaseSetup" executed="True" result="Success" success="True" time="0.534" asserts="0">
+                  <test-suite type="Namespace" name="Criteria" executed="True" result="Success" success="True" time="6.343" asserts="0">
                     <results>
-                      <test-case name="NHibernate.TestDatabaseSetup.DatabaseSetup.SetupDatabase" executed="True" result="Success" success="True" time="0.528" asserts="1" />
+                      <test-suite type="Namespace" name="Lambda" executed="True" result="Success" success="True" time="6.343" asserts="0">
+                        <results>
+                          <test-suite type="TestFixture" name="IntegrationFixtureAsync" executed="True" result="Success" success="True" time="6.340" asserts="0">
+                            <results>
+                              <test-case name="NHibernate.Test.Criteria.Lambda.IntegrationFixtureAsync.DetachedQuery_SimpleCriterionAsync" executed="True" result="Success" success="True" time="1.480" asserts="1" />
+                              <test-case name="NHibernate.Test.Criteria.Lambda.IntegrationFixtureAsync.FilterNullComponentAsync" executed="True" result="Success" success="True" time="0.041" asserts="2" />
+                              <test-case name="NHibernate.Test.Criteria.Lambda.IntegrationFixtureAsync.FunctionsOrderAsync" executed="True" result="Success" success="True" time="0.073" asserts="0" />
+                              <test-case name="NHibernate.Test.Criteria.Lambda.IntegrationFixtureAsync.IsTypeAsync" executed="True" result="Success" success="True" time="0.136" asserts="8" />
+                              <test-case name="NHibernate.Test.Criteria.Lambda.IntegrationFixtureAsync.OnClauseAsync" executed="True" result="Success" success="True" time="0.137" asserts="0" />
+                              <test-case name="NHibernate.Test.Criteria.Lambda.IntegrationFixtureAsync.OverrideEagerJoinAsync" executed="True" result="Success" success="True" time="0.032" asserts="3" />
+                              <test-case name="NHibernate.Test.Criteria.Lambda.IntegrationFixtureAsync.RowCountAsync" executed="True" result="Success" success="True" time="0.077" asserts="5" />
+                              <test-case name="NHibernate.Test.Criteria.Lambda.IntegrationFixtureAsync.RowCountAsync_ShouldReturnCanceledTaskWhenPassedCanceledToken" executed="True" result="Success" success="True" time="0.019" asserts="1" />
+                              <test-case name="NHibernate.Test.Criteria.Lambda.IntegrationFixtureAsync.RowCountAsync_ShouldThrowExceptionWhenCancellationTokenIsCanceled" executed="True" result="Success" success="True" time="0.022" asserts="2" />
+                              <test-case name="NHibernate.Test.Criteria.Lambda.IntegrationFixtureAsync.StatelessSessionAsync" executed="True" result="Success" success="True" time="0.036" asserts="2" />
+                            </results>
+                          </test-suite>
+                        </results>
+                      </test-suite>
                     </results>
                   </test-suite>
                 </results>

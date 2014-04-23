@@ -2,7 +2,8 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
-
+using System.Threading;
+using System.Threading.Tasks;
 using NUnit.Framework;
 using SharpTestsEx;
 
@@ -31,6 +32,63 @@ namespace NHibernate.Test.Criteria.Lambda
 				s.CreateQuery("delete from JoinedChild").ExecuteUpdate();
 				s.CreateQuery("delete from Parent").ExecuteUpdate();
 				t.Commit();
+			}
+		}
+
+		[Test]
+		[ExpectedException(typeof(AggregateException))]
+		public void RowCountAsync_ShouldReturnCanceledTaskWhenPassedCanceledToken()
+		{
+			// Arrange
+			var cancellationTokenSource = new CancellationTokenSource();
+			cancellationTokenSource.Cancel();
+			Task result;
+
+			using (ISession session = OpenSession())
+			{
+				IQueryOver<Person> query =session.QueryOver<Person>()
+					.JoinQueryOver(p => p.Children)
+					.OrderBy(c => c.Age).Desc
+					.Skip(2)
+					.Take(1);
+				// Act
+				result = query.RowCountAsync(cancellationTokenSource.Token);
+			}
+
+			// Assert
+			Assert.That(result.IsCanceled);
+			result.Wait();
+		}
+
+		[Test]
+		public void RowCountAsync_ShouldThrowExceptionWhenCancellationTokenIsCanceled()
+		{
+			// Arrange
+			var cancellationTokenSource = new CancellationTokenSource();
+			Task task;
+			using (ISession session = OpenSession())
+			{
+				IQueryOver<Person> query = session.QueryOver<Person>()
+					.JoinQueryOver(p => p.Children)
+					.OrderBy(c => c.Age).Desc
+					.Skip(2)
+					.Take(1);
+				// Act
+				task = query.RowCountAsync(cancellationTokenSource.Token);
+
+				cancellationTokenSource.Cancel();
+			}
+
+			try
+			{
+				task.Wait();
+				Assert.Fail("Should have thrown exception");
+			}
+			catch (AggregateException aggregateException)
+			{
+				// Assert
+				Assert.That(aggregateException.Flatten().InnerExceptions.Count, Is.EqualTo(1));
+				Assert.That(aggregateException.Flatten().InnerExceptions[0], Is.TypeOf(typeof(TaskCanceledException)));
 			}
 		}
 
@@ -342,15 +400,18 @@ namespace NHibernate.Test.Criteria.Lambda
 					.ContinueWith(task =>
 					{
 						IList<Person> results = task.Result;
-						int rowCount = query.RowCount();
-						object bigRowCount = query.RowCountInt64();
+						query.RowCountAsync().ContinueWith(rowCountTask =>
+						{
+							int rowCount = rowCountTask.Result;
+							object bigRowCount = query.RowCountInt64();
 
-						// Assert
-						Assert.That(results.Count, Is.EqualTo(1));
-						Assert.That(results[0].Name, Is.EqualTo("Name 3"));
-						Assert.That(rowCount, Is.EqualTo(4));
-						Assert.That(bigRowCount, Is.TypeOf<long>());
-						Assert.That(bigRowCount, Is.EqualTo(4));
+							// Assert
+							Assert.That(results.Count, Is.EqualTo(1));
+							Assert.That(results[0].Name, Is.EqualTo("Name 3"));
+							Assert.That(rowCount, Is.EqualTo(4));
+							Assert.That(bigRowCount, Is.TypeOf<long>());
+							Assert.That(bigRowCount, Is.EqualTo(4));
+						}).Wait();
 					}).Wait();
 			}
 		}
