@@ -231,15 +231,7 @@ namespace NHibernate.Loader
 		/// </summary>
 		private IList DoQueryAndInitializeNonLazyCollections(ISessionImplementor session, QueryParameters queryParameters, bool returnProxies)
 		{
-			IPersistenceContext persistenceContext = session.PersistenceContext;
-			bool defaultReadOnlyOrig = persistenceContext.DefaultReadOnly;
-
-			if (queryParameters.IsReadOnlyInitialized)
-				persistenceContext.DefaultReadOnly = queryParameters.ReadOnly;
-			else
-				queryParameters.ReadOnly = persistenceContext.DefaultReadOnly;
-
-			persistenceContext.BeforeLoad();
+			var beforeParams = BeforeDoQueryAndInitializeNonLazyCollections(new BeforeDoQueryAndInitializeNonLazyCollectionsParams(session, queryParameters));
 			IList result;
 			try
 			{
@@ -249,13 +241,13 @@ namespace NHibernate.Loader
 				}
 				finally
 				{
-					persistenceContext.AfterLoad();
+					beforeParams.PersistenceContext.AfterLoad();
 				}
-				persistenceContext.InitializeNonLazyCollections();
+				beforeParams.PersistenceContext.InitializeNonLazyCollections();
 			}
 			finally
 			{
-				persistenceContext.DefaultReadOnly = defaultReadOnlyOrig;
+				beforeParams.PersistenceContext.DefaultReadOnly = beforeParams.DefaultReadOnlyOrig;
 			}
 
 			return result;
@@ -268,20 +260,11 @@ namespace NHibernate.Loader
 		/// </summary>
 		private Task<IList> DoQueryAndInitializeNonLazyCollectionsAsync(ISessionImplementor session, CancellationToken cancellationToken, QueryParameters queryParameters, bool returnProxies)
 		{
-			IPersistenceContext persistenceContext = session.PersistenceContext;
-			bool defaultReadOnlyOrig = persistenceContext.DefaultReadOnly;
-
-			if (queryParameters.IsReadOnlyInitialized)
-				persistenceContext.DefaultReadOnly = queryParameters.ReadOnly;
-			else
-				queryParameters.ReadOnly = persistenceContext.DefaultReadOnly;
-
-			persistenceContext.BeforeLoad();
-
+			var beforeParams = BeforeDoQueryAndInitializeNonLazyCollections(new BeforeDoQueryAndInitializeNonLazyCollectionsParams(session, queryParameters));
 			var task = DoQueryAsync(session, cancellationToken, queryParameters, returnProxies);
 			if (task.IsCanceled)
 			{
-				EndDoQueryAndInitializeNonLazyCollectionsAsync(persistenceContext, defaultReadOnlyOrig);
+				EndDoQueryAndInitializeNonLazyCollectionsAsync(beforeParams.PersistenceContext, beforeParams.DefaultReadOnlyOrig);
 				return CanceledIListTask();
 			}
 			return task.ContinueWith(_ =>
@@ -292,9 +275,23 @@ namespace NHibernate.Loader
 					}
 					finally
 					{
-						EndDoQueryAndInitializeNonLazyCollectionsAsync(persistenceContext, defaultReadOnlyOrig);
+						EndDoQueryAndInitializeNonLazyCollectionsAsync(beforeParams.PersistenceContext, beforeParams.DefaultReadOnlyOrig);
 					}
 				});
+		}
+
+		private static BeforeDoQueryAndInitializeNonLazyCollectionsParams BeforeDoQueryAndInitializeNonLazyCollections(BeforeDoQueryAndInitializeNonLazyCollectionsParams beforeParams)
+		{
+			beforeParams.PersistenceContext = beforeParams.Session.PersistenceContext;
+			beforeParams.DefaultReadOnlyOrig = beforeParams.PersistenceContext.DefaultReadOnly;
+
+			if (beforeParams.QueryParameters.IsReadOnlyInitialized)
+				beforeParams.PersistenceContext.DefaultReadOnly = beforeParams.QueryParameters.ReadOnly;
+			else
+				beforeParams.QueryParameters.ReadOnly = beforeParams.PersistenceContext.DefaultReadOnly;
+
+			beforeParams.PersistenceContext.BeforeLoad();
+			return beforeParams;
 		}
 
 		private static Task<IList> CanceledIListTask()
@@ -2040,6 +2037,20 @@ namespace NHibernate.Loader
 				this.QueryParameters = queryParameters;
 				this.QuerySpaces = querySpaces;
 				this.ResultTypes = resultTypes;
+			}
+		}
+
+		private class BeforeDoQueryAndInitializeNonLazyCollectionsParams
+		{
+			public ISessionImplementor Session { get; set; }
+			public QueryParameters QueryParameters { get; set; }
+			public IPersistenceContext PersistenceContext { get; set; }
+			public bool DefaultReadOnlyOrig { get; set; }
+
+			public BeforeDoQueryAndInitializeNonLazyCollectionsParams(ISessionImplementor session, QueryParameters queryParameters)
+			{
+				Session = session;
+				QueryParameters = queryParameters;
 			}
 		}
 	}
