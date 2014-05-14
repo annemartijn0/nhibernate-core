@@ -1921,9 +1921,7 @@ namespace NHibernate.Impl
 		{
 			using (new SessionIdLoggingContext(SessionId))
 			{
-				var beforeListParams = new BeforeListParams(criteria);
-				BeforeList(beforeListParams);
-
+				var beforeListParams = BeforeList(new BeforeListParams(criteria));
 				bool success = false;
 				try
 				{
@@ -1953,8 +1951,7 @@ namespace NHibernate.Impl
 		public override Task ListAsync(CriteriaImpl criteria, IList results, CancellationToken cancellationToken)
 		{
 			var sessionIdLoggingContext = new SessionIdLoggingContext(SessionId);
-			var beforeListParams = new BeforeListParams(criteria);
-			BeforeList(beforeListParams);
+			var beforeListParams = BeforeList(new BeforeListParams(criteria));
 
 			var tasks = new Task<IList>[beforeListParams.Size];
 			for (int i = beforeListParams.Size - 1; i >= 0; i--)
@@ -2001,7 +1998,7 @@ namespace NHibernate.Impl
 				}, cancellationToken);
 		}
 
-		private void BeforeList(BeforeListParams beforeListParams)
+		private BeforeListParams BeforeList(BeforeListParams beforeListParams)
 		{
 			CheckAndUpdateSessionStatus();
 
@@ -2027,6 +2024,7 @@ namespace NHibernate.Impl
 			AutoFlushIfRequired(spaces);
 
 			dontFlushFromFind++;
+			return beforeListParams;
 		}
 
 		public bool Contains(object obj)
