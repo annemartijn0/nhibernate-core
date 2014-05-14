@@ -462,39 +462,73 @@ namespace NHibernate.Loader
 		{
 			using (new SessionIdLoggingContext(session.SessionId))
 			{
-				RowSelection selection = queryParameters.RowSelection;
-				int maxRows = HasMaxRows(selection) ? selection.MaxRows : int.MaxValue;
+				var beforeParams = BeforeDoQuery(new BeforeDoQueryParams(session, queryParameters));
+				DbDataReader rs = GetResultSet(
+					beforeParams.DbCommand, 
+					queryParameters.HasAutoDiscoverScalarTypes, 
+					queryParameters.Callable,
+					beforeParams.Selection,
+					session);
 
-				int entitySpan = EntityPersisters.Length;
-
-				List<object> hydratedObjects = entitySpan == 0 ? null : new List<object>(entitySpan * 10);
-
-				DbCommand st = PrepareQueryCommand(queryParameters, false, session);
-
-				DbDataReader rs = GetResultSet(st, queryParameters.HasAutoDiscoverScalarTypes, queryParameters.Callable, selection,
-											  session);
-
-				return Results(session, CancellationToken.None, queryParameters, returnProxies, rs, entitySpan, maxRows, hydratedObjects, st);
+				return Results(
+					session, 
+					CancellationToken.None, 
+					queryParameters, 
+					returnProxies, 
+					rs,
+					beforeParams.EntitySpan,
+					beforeParams.MaxRows,
+					beforeParams.HydratedObjects,
+					beforeParams.DbCommand);
 			}
 		}
 
-		private Task<IList> DoQueryAsync(ISessionImplementor session, CancellationToken cancellationToken, QueryParameters queryParameters, bool returnProxies)
+		private Task<IList> DoQueryAsync(ISessionImplementor session, CancellationToken cancellationToken,
+			QueryParameters queryParameters, bool returnProxies)
 		{
-			using (new SessionIdLoggingContext(session.SessionId))
-			{
-				RowSelection selection = queryParameters.RowSelection;
-				int maxRows = HasMaxRows(selection) ? selection.MaxRows : int.MaxValue;
+			var sessionIdLoggingContext = new SessionIdLoggingContext(session.SessionId);
+			var beforeParams = BeforeDoQuery(new BeforeDoQueryParams(session, queryParameters));
 
-				int entitySpan = EntityPersisters.Length;
+			return GetResultSetAsync(
+				beforeParams.DbCommand, 
+				cancellationToken, 
+				queryParameters.HasAutoDiscoverScalarTypes, 
+				queryParameters.Callable, 
+				beforeParams.Selection, 
+				session)
+				.ContinueWith(task =>
+				{
+					try
+					{
+						return Results(
+							session, 
+							cancellationToken, 
+							queryParameters, 
+							returnProxies, 
+							task.Result, 
+							beforeParams.EntitySpan, 
+							beforeParams.MaxRows, 
+							beforeParams.HydratedObjects, 
+							beforeParams.DbCommand);
+					}
+					finally
+					{
+						sessionIdLoggingContext.Dispose();
+					}
+				}, cancellationToken);
+		}
 
-				List<object> hydratedObjects = entitySpan == 0 ? null : new List<object>(entitySpan * 10);
+		private BeforeDoQueryParams BeforeDoQuery(BeforeDoQueryParams beforeParams)
+		{
+			beforeParams.Selection = beforeParams.QueryParameters.RowSelection;
+			beforeParams.MaxRows = HasMaxRows(beforeParams.Selection) ? beforeParams.Selection.MaxRows : int.MaxValue;
 
-				DbCommand st = PrepareQueryCommand(queryParameters, false, session);
+			beforeParams.EntitySpan = EntityPersisters.Length;
 
-				return GetResultSetAsync(st, cancellationToken, queryParameters.HasAutoDiscoverScalarTypes, queryParameters.Callable, selection, session)
-					.ContinueWith(task =>
-						Results(session, cancellationToken, queryParameters, returnProxies, task.Result, entitySpan, maxRows, hydratedObjects, st), cancellationToken);
-			}
+			beforeParams.HydratedObjects = beforeParams.EntitySpan == 0 ? null : new List<object>(beforeParams.EntitySpan * 10);
+
+			beforeParams.DbCommand = PrepareQueryCommand(beforeParams.QueryParameters, false, beforeParams.Session);
+			return beforeParams;
 		}
 
 		private IList Results(ISessionImplementor session, CancellationToken cancellationToken, QueryParameters queryParameters, bool returnProxies, DbDataReader rs, int entitySpan, int maxRows, List<object> hydratedObjects, DbCommand st)
@@ -1612,11 +1646,11 @@ namespace NHibernate.Loader
 			{
 				beforeListUsingQueryCacheParams.Result = DoList(session, queryParameters);
 				PutResultInQueryCache(
-					session, 
-					queryParameters, 
-					resultTypes, 
-					beforeListUsingQueryCacheParams.QueryCache, 
-					beforeListUsingQueryCacheParams.Key, 
+					session,
+					queryParameters,
+					resultTypes,
+					beforeListUsingQueryCacheParams.QueryCache,
+					beforeListUsingQueryCacheParams.Key,
 					beforeListUsingQueryCacheParams.Result);
 			}
 			return GetResultList(beforeListUsingQueryCacheParams.Result, queryParameters.ResultTransformer);
@@ -1660,11 +1694,11 @@ namespace NHibernate.Loader
 					{
 						beforeListUsingQueryCacheParams.Result = task.Result;
 						PutResultInQueryCache(
-							session, 
-							queryParameters, 
-							resultTypes, 
-							beforeListUsingQueryCacheParams.QueryCache, 
-							beforeListUsingQueryCacheParams.Key, 
+							session,
+							queryParameters,
+							resultTypes,
+							beforeListUsingQueryCacheParams.QueryCache,
+							beforeListUsingQueryCacheParams.Key,
 							beforeListUsingQueryCacheParams.Result);
 						return GetResultList(beforeListUsingQueryCacheParams.Result, queryParameters.ResultTransformer);
 					}, cancellationToken);
@@ -1678,7 +1712,7 @@ namespace NHibernate.Loader
 		{
 			beforeListUsingQueryCacheParams.QueryCache = _factory.GetQueryCache(beforeListUsingQueryCacheParams.QueryParameters.CacheRegion);
 			ISet<FilterKey> filterKeys = FilterKey.CreateFilterKeys(
-				beforeListUsingQueryCacheParams.Session.EnabledFilters, 
+				beforeListUsingQueryCacheParams.Session.EnabledFilters,
 				beforeListUsingQueryCacheParams.Session.EntityMode);
 
 			beforeListUsingQueryCacheParams.Key = new QueryKey(Factory, SqlString, beforeListUsingQueryCacheParams.QueryParameters, filterKeys);
@@ -2033,10 +2067,10 @@ namespace NHibernate.Loader
 
 			public BeforeListUsingQueryCacheParams(ISessionImplementor session, QueryParameters queryParameters, ISet<string> querySpaces, IType[] resultTypes)
 			{
-				this.Session = session;
-				this.QueryParameters = queryParameters;
-				this.QuerySpaces = querySpaces;
-				this.ResultTypes = resultTypes;
+				Session = session;
+				QueryParameters = queryParameters;
+				QuerySpaces = querySpaces;
+				ResultTypes = resultTypes;
 			}
 		}
 
@@ -2048,6 +2082,23 @@ namespace NHibernate.Loader
 			public bool DefaultReadOnlyOrig { get; set; }
 
 			public BeforeDoQueryAndInitializeNonLazyCollectionsParams(ISessionImplementor session, QueryParameters queryParameters)
+			{
+				Session = session;
+				QueryParameters = queryParameters;
+			}
+		}
+
+		private class BeforeDoQueryParams
+		{
+			public ISessionImplementor Session { get; set; }
+			public QueryParameters QueryParameters { get; set; }
+			public RowSelection Selection { get; set; }
+			public int MaxRows { get; set; }
+			public int EntitySpan { get; set; }
+			public List<object> HydratedObjects { get; set; }
+			public DbCommand DbCommand { get; set; }
+
+			public BeforeDoQueryParams(ISessionImplementor session, QueryParameters queryParameters)
 			{
 				Session = session;
 				QueryParameters = queryParameters;
