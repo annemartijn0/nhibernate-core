@@ -1921,37 +1921,15 @@ namespace NHibernate.Impl
 		{
 			using (new SessionIdLoggingContext(SessionId))
 			{
-				CheckAndUpdateSessionStatus();
-
-				string[] implementors = Factory.GetImplementors(criteria.EntityOrClassName);
-				int size = implementors.Length;
-
-				CriteriaLoader[] loaders = new CriteriaLoader[size];
-				ISet<string> spaces = new HashSet<string>();
-
-				for (int i = 0; i < size; i++)
-				{
-					loaders[i] = new CriteriaLoader(
-						GetOuterJoinLoadable(implementors[i]),
-						Factory,
-						criteria,
-						implementors[i],
-						enabledFilters
-						);
-
-					spaces.UnionWith(loaders[i].QuerySpaces);
-				}
-
-				AutoFlushIfRequired(spaces);
-
-				dontFlushFromFind++;
+				var beforeListParams = new BeforeListParams(criteria);
+				BeforeList(beforeListParams);
 
 				bool success = false;
 				try
 				{
-					for (int i = size - 1; i >= 0; i--)
+					for (int i = beforeListParams.Size - 1; i >= 0; i--)
 					{
-						ArrayHelper.AddAll(results, loaders[i].List(this));
+						ArrayHelper.AddAll(results, beforeListParams.Loaders[i].List(this));
 					}
 					success = true;
 				}
@@ -1975,35 +1953,13 @@ namespace NHibernate.Impl
 		public override Task ListAsync(CriteriaImpl criteria, IList results, CancellationToken cancellationToken)
 		{
 			var sessionIdLoggingContext = new SessionIdLoggingContext(SessionId);
-			CheckAndUpdateSessionStatus();
+			var beforeListParams = new BeforeListParams(criteria);
+			BeforeList(beforeListParams);
 
-			string[] implementors = Factory.GetImplementors(criteria.EntityOrClassName);
-			int size = implementors.Length;
-
-			CriteriaLoader[] loaders = new CriteriaLoader[size];
-			ISet<string> spaces = new HashSet<string>();
-
-			for (int i = 0; i < size; i++)
+			var tasks = new Task<IList>[beforeListParams.Size];
+			for (int i = beforeListParams.Size - 1; i >= 0; i--)
 			{
-				loaders[i] = new CriteriaLoader(
-					GetOuterJoinLoadable(implementors[i]),
-					Factory,
-					criteria,
-					implementors[i],
-					enabledFilters
-					);
-
-				spaces.UnionWith(loaders[i].QuerySpaces);
-			}
-
-			AutoFlushIfRequired(spaces);
-
-			dontFlushFromFind++;
-
-			var tasks = new Task<IList>[size];
-			for (int i = size - 1; i >= 0; i--)
-			{
-				tasks[i] = loaders[i].ListAsync(this, cancellationToken);
+				tasks[i] = beforeListParams.Loaders[i].ListAsync(this, cancellationToken);
 			}
 
 			return Task.Factory
@@ -2012,7 +1968,6 @@ namespace NHibernate.Impl
 					bool success = false;
 					try
 					{
-
 						tasks.ForEach(t => ArrayHelper.AddAll(results, t.Result));
 						success = true;
 					}
@@ -2044,6 +1999,34 @@ namespace NHibernate.Impl
 
 					sessionIdLoggingContext.Dispose();
 				}, cancellationToken);
+		}
+
+		private void BeforeList(BeforeListParams beforeListParams)
+		{
+			CheckAndUpdateSessionStatus();
+
+			string[] implementors = Factory.GetImplementors(beforeListParams.Criteria.EntityOrClassName);
+			beforeListParams.Size = implementors.Length;
+
+			beforeListParams.Loaders = new CriteriaLoader[beforeListParams.Size];
+			ISet<string> spaces = new HashSet<string>();
+
+			for (int i = 0; i < beforeListParams.Size; i++)
+			{
+				beforeListParams.Loaders[i] = new CriteriaLoader(
+					GetOuterJoinLoadable(implementors[i]),
+					Factory,
+					beforeListParams.Criteria,
+					implementors[i],
+					enabledFilters
+					);
+
+				spaces.UnionWith(beforeListParams.Loaders[i].QuerySpaces);
+			}
+
+			AutoFlushIfRequired(spaces);
+
+			dontFlushFromFind++;
 		}
 
 		public bool Contains(object obj)
@@ -2800,6 +2783,18 @@ namespace NHibernate.Impl
 						throw;
 					}
 				}
+			}
+		}
+
+		private class BeforeListParams
+		{
+			public CriteriaImpl Criteria { get; set; }
+			public int Size { get; set; }
+			public CriteriaLoader[] Loaders { get; set; }
+
+			public BeforeListParams(CriteriaImpl criteria)
+			{
+				Criteria = criteria;
 			}
 		}
 	}
