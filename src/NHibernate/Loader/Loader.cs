@@ -1608,20 +1608,21 @@ namespace NHibernate.Loader
 
 		private IList ListUsingQueryCache(ISessionImplementor session, QueryParameters queryParameters, ISet<string> querySpaces, IType[] resultTypes)
 		{
-			IQueryCache queryCache = _factory.GetQueryCache(queryParameters.CacheRegion);
+			var beforeListUsingQueryCacheParams = BeforeListUsingQueryCache(
+				new BeforeListUsingQueryCacheParams(session, queryParameters, querySpaces, resultTypes));
 
-			ISet<FilterKey> filterKeys = FilterKey.CreateFilterKeys(session.EnabledFilters, session.EntityMode);
-			QueryKey key = new QueryKey(Factory, SqlString, queryParameters, filterKeys);
-
-			IList result = GetResultFromQueryCache(session, queryParameters, querySpaces, resultTypes, queryCache, key);
-
-			if (result == null)
+			if (beforeListUsingQueryCacheParams.Result == null)
 			{
-				result = DoList(session, queryParameters);
-				PutResultInQueryCache(session, queryParameters, resultTypes, queryCache, key, result);
+				beforeListUsingQueryCacheParams.Result = DoList(session, queryParameters);
+				PutResultInQueryCache(
+					session, 
+					queryParameters, 
+					resultTypes, 
+					beforeListUsingQueryCacheParams.QueryCache, 
+					beforeListUsingQueryCacheParams.Key, 
+					beforeListUsingQueryCacheParams.Result);
 			}
-
-			return GetResultList(result, queryParameters.ResultTransformer);
+			return GetResultList(beforeListUsingQueryCacheParams.Result, queryParameters.ResultTransformer);
 		}
 
 		/// <summary>
@@ -1641,7 +1642,6 @@ namespace NHibernate.Loader
 			{
 				return ListUsingQueryCacheAsync(session, cancellationToken, queryParameters, querySpaces, resultTypes);
 			}
-
 			return ListIgnoreQueryCacheAsync(session, cancellationToken, queryParameters);
 		}
 
@@ -1653,31 +1653,47 @@ namespace NHibernate.Loader
 
 		private Task<IList> ListUsingQueryCacheAsync(ISessionImplementor session, CancellationToken cancellationToken, QueryParameters queryParameters, ISet<string> querySpaces, IType[] resultTypes)
 		{
-			IQueryCache queryCache = _factory.GetQueryCache(queryParameters.CacheRegion);
+			var beforeListUsingQueryCacheParams = BeforeListUsingQueryCache(
+				new BeforeListUsingQueryCacheParams(session, queryParameters, querySpaces, resultTypes));
 
-			ISet<FilterKey> filterKeys = FilterKey.CreateFilterKeys(session.EnabledFilters, session.EntityMode);
-			QueryKey key = new QueryKey(Factory, SqlString, queryParameters, filterKeys);
-
-			var taskCompletionSource = new TaskCompletionSource<IList>();
-			IList result = GetResultFromQueryCache(session, queryParameters, querySpaces, resultTypes, queryCache, key);
-
-			if (IsResultNullOrNotSetToTaskCompletionSource(result, taskCompletionSource))
+			if (beforeListUsingQueryCacheParams.Result == null)
 			{
 				return DoListAsync(session, cancellationToken, queryParameters)
 					.ContinueWith(task =>
 					{
-						result = task.Result;
-						PutResultInQueryCache(session, queryParameters, resultTypes, queryCache, key, result);
-						return GetResultList(result, queryParameters.ResultTransformer);
+						beforeListUsingQueryCacheParams.Result = task.Result;
+						PutResultInQueryCache(
+							session, 
+							queryParameters, 
+							resultTypes, 
+							beforeListUsingQueryCacheParams.QueryCache, 
+							beforeListUsingQueryCacheParams.Key, 
+							beforeListUsingQueryCacheParams.Result);
+						return GetResultList(beforeListUsingQueryCacheParams.Result, queryParameters.ResultTransformer);
 					}, cancellationToken);
 			}
-
+			var taskCompletionSource = new TaskCompletionSource<IList>();
+			taskCompletionSource.SetResult(beforeListUsingQueryCacheParams.Result);
 			return taskCompletionSource.Task;
 		}
 
-		private static bool IsResultNullOrNotSetToTaskCompletionSource(IList result, TaskCompletionSource<IList> taskCompletionSource)
+		private BeforeListUsingQueryCacheParams BeforeListUsingQueryCache(BeforeListUsingQueryCacheParams beforeListUsingQueryCacheParams)
 		{
-			return result == null || !taskCompletionSource.TrySetResult(result);
+			beforeListUsingQueryCacheParams.QueryCache = _factory.GetQueryCache(beforeListUsingQueryCacheParams.QueryParameters.CacheRegion);
+			ISet<FilterKey> filterKeys = FilterKey.CreateFilterKeys(
+				beforeListUsingQueryCacheParams.Session.EnabledFilters, 
+				beforeListUsingQueryCacheParams.Session.EntityMode);
+
+			beforeListUsingQueryCacheParams.Key = new QueryKey(Factory, SqlString, beforeListUsingQueryCacheParams.QueryParameters, filterKeys);
+			beforeListUsingQueryCacheParams.Result = GetResultFromQueryCache(
+				beforeListUsingQueryCacheParams.Session,
+				beforeListUsingQueryCacheParams.QueryParameters,
+				beforeListUsingQueryCacheParams.QuerySpaces,
+				beforeListUsingQueryCacheParams.ResultTypes,
+				beforeListUsingQueryCacheParams.QueryCache,
+				beforeListUsingQueryCacheParams.Key);
+
+			return beforeListUsingQueryCacheParams;
 		}
 
 		private IList GetResultFromQueryCache(ISessionImplementor session, QueryParameters queryParameters,
@@ -2007,5 +2023,24 @@ namespace NHibernate.Loader
 		}
 
 		#endregion
+
+		private class BeforeListUsingQueryCacheParams
+		{
+			public ISessionImplementor Session { get; set; }
+			public QueryParameters QueryParameters { get; set; }
+			public ISet<string> QuerySpaces { get; set; }
+			public IType[] ResultTypes { get; set; }
+			public IQueryCache QueryCache { get; set; }
+			public QueryKey Key { get; set; }
+			public IList Result { get; set; }
+
+			public BeforeListUsingQueryCacheParams(ISessionImplementor session, QueryParameters queryParameters, ISet<string> querySpaces, IType[] resultTypes)
+			{
+				this.Session = session;
+				this.QueryParameters = queryParameters;
+				this.QuerySpaces = querySpaces;
+				this.ResultTypes = resultTypes;
+			}
+		}
 	}
 }
