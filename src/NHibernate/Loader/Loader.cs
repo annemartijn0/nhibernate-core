@@ -1327,6 +1327,7 @@ namespace NHibernate.Loader
 		/// <param name="autoDiscoverTypes">true if result types need to be auto-discovered by the loader; false otherwise.</param>
 		/// <param name="session">The <see cref="ISession" /> to load in.</param>
 		/// <param name="callable"></param>
+		/// <param name="cancellationToken">Token to cancel the request.</param>
 		/// <returns>An IDataReader advanced to the first record in RowSelection.</returns>
 		protected Task<DbDataReader> GetResultSetAsync(DbCommand st, CancellationToken cancellationToken, bool autoDiscoverTypes, bool callable, RowSelection selection, ISessionImplementor session)
 		{
@@ -1335,23 +1336,23 @@ namespace NHibernate.Loader
 				.ExecuteReaderAsync(st, cancellationToken)
 				.ContinueWith(task =>
 				{
-					DbDataReader reader = null;
+					DbDataReader rs = null;
 					try
 					{
-						reader = task.Result;
-						return EndGetResultSet(session, selection, autoDiscoverTypes, reader);
+						rs = task.Result;
+						return EndGetResultSet(session, selection, autoDiscoverTypes, rs);
 					}
 					catch (AggregateException aggregateException)
 					{
 						foreach (var exception in aggregateException.Flatten().InnerExceptions)
 						{
-							HandleExceptionsGetResultSet(st, session, exception, reader);							
+							HandleExceptionsGetResultSet(st, session, exception, rs);							
 						}
 						throw;						
 					}
 					catch (Exception sqle)
 					{
-						HandleExceptionsGetResultSet(st, session, sqle, reader);
+						HandleExceptionsGetResultSet(st, session, sqle, rs);
 						throw;
 					}
 				});
