@@ -1364,8 +1364,7 @@ namespace NHibernate.Loader
 			// TODO NH: Callable
 		}
 
-		private DbDataReader EndGetResultSet(ISessionImplementor session, RowSelection selection, bool autoDiscoverTypes,
-			DbDataReader reader)
+		private DbDataReader EndGetResultSet(ISessionImplementor session, RowSelection selection, bool autoDiscoverTypes, DbDataReader reader)
 		{
 			//NH: this is checked outside the WrapResultSet because we
 			// want to avoid the syncronization overhead in the vast majority
