@@ -20,6 +20,7 @@ using NHibernate.Hql;
 using NHibernate.Intercept;
 using NHibernate.Loader.Criteria;
 using NHibernate.Loader.Custom;
+using NHibernate.Mapping;
 using NHibernate.Persister.Collection;
 using NHibernate.Persister.Entity;
 using NHibernate.Proxy;
@@ -620,14 +621,12 @@ namespace NHibernate.Impl
 		{
 			using (new SessionIdLoggingContext(SessionId))
 			{
-				var plan = QueryExpressionPlan(queryExpression, queryParameters);
+				var beforeParams = BeforeListUsingPlan(new BeforeListUsingPlanParams(queryExpression, queryParameters));
 
-				bool success = false;
-				dontFlushFromFind++; //stops flush being called multiple times if this method is recursively called
 				try
 				{
-					plan.PerformList(queryParameters, this, results);
-					success = true;
+					beforeParams.Plan.PerformList(queryParameters, this, results);
+					beforeParams.Success = true;
 				}
 				catch (HibernateException)
 				{
@@ -640,8 +639,7 @@ namespace NHibernate.Impl
 				}
 				finally
 				{
-					dontFlushFromFind--;
-					AfterOperation(success);
+					FinallyList(beforeParams.Success);
 				}
 			}
 		}
@@ -649,18 +647,15 @@ namespace NHibernate.Impl
 		public override Task ListAsync(IQueryExpression queryExpression, QueryParameters queryParameters, IList results, CancellationToken cancellationToken)
 		{
 			var sessionIdLoggingContext = new SessionIdLoggingContext(SessionId);
-			var plan = QueryExpressionPlan(queryExpression, queryParameters);
+			var beforeParams = BeforeListUsingPlan(new BeforeListUsingPlanParams(queryExpression, queryParameters));
 
-			bool success = false;
-			dontFlushFromFind++; //stops flush being called multiple times if this method is recursively called
-
-			return plan.PerformListAsync(queryParameters, this, results, cancellationToken)
+			return beforeParams.Plan.PerformListAsync(queryParameters, this, results, cancellationToken)
 				.ContinueWith(task =>
 				{
 					try
 					{
 						task.Wait();
-						success = true;
+						beforeParams.Success = true;
 					}
 					catch (AggregateException aggregateException)
 					{
@@ -678,11 +673,20 @@ namespace NHibernate.Impl
 					}
 					finally
 					{
-						dontFlushFromFind--;
-						AfterOperation(success);
+						FinallyList(beforeParams.Success);
 						sessionIdLoggingContext.Dispose();
 					}
 				});
+		}
+
+		private BeforeListUsingPlanParams BeforeListUsingPlan(BeforeListUsingPlanParams beforeParams)
+		{
+			beforeParams.Plan = QueryExpressionPlan(beforeParams.QueryExpression, beforeParams.QueryParameters);
+
+			beforeParams.Success = false;
+			dontFlushFromFind++; //stops flush being called multiple times if this method is recursively called
+
+			return beforeParams;
 		}
 
 		private static bool IsHibernateOrTaskCanceledException(Exception exception)
@@ -2092,22 +2096,15 @@ namespace NHibernate.Impl
 		{
 			using (new SessionIdLoggingContext(SessionId))
 			{
-				CheckAndUpdateSessionStatus();
-
-				CustomLoader loader = new CustomLoader(customQuery, Factory);
-				AutoFlushIfRequired(loader.QuerySpaces);
-
-				bool success = false;
-				dontFlushFromFind++;
+				var beforeParams = BeforeListCustomQuery(new BeforeListCustomQueryParams(customQuery));
 				try
 				{
-					ArrayHelper.AddAll(results, loader.List(this, queryParameters));
-					success = true;
+					ArrayHelper.AddAll(results, beforeParams.Loader.List(this, queryParameters));
+					beforeParams.Success = true;
 				}
 				finally
 				{
-					dontFlushFromFind--;
-					AfterOperation(success);
+					FinallyList(beforeParams.Success);
 				}
 			}
 		}
@@ -2115,27 +2112,33 @@ namespace NHibernate.Impl
 		public override Task ListCustomQueryAsync(ICustomQuery customQuery, QueryParameters queryParameters, IList results, CancellationToken cancellationToken)
 		{
 			var sessionIdLoggingContext = new SessionIdLoggingContext(SessionId);
-			CheckAndUpdateSessionStatus();
-
-			CustomLoader loader = new CustomLoader(customQuery, Factory);
-			AutoFlushIfRequired(loader.QuerySpaces);
-
-			bool success = false;
-			dontFlushFromFind++;
-			return loader.ListAsync(this, queryParameters, cancellationToken).ContinueWith(task =>
+			var beforeParams = BeforeListCustomQuery(new BeforeListCustomQueryParams(customQuery));
+			return beforeParams.Loader.ListAsync(this, queryParameters, cancellationToken).ContinueWith(task =>
 			{
 				try
 				{
 					ArrayHelper.AddAll(results, task.Result);
-					success = true;
+					beforeParams.Success = true;
 				}
 				finally
 				{
-					dontFlushFromFind--;
-					AfterOperation(success);
+					FinallyList(beforeParams.Success);
 					sessionIdLoggingContext.Dispose();
 				}
 			});
+		}
+
+		private BeforeListCustomQueryParams BeforeListCustomQuery(BeforeListCustomQueryParams beforeParams)
+		{
+			CheckAndUpdateSessionStatus();
+
+			beforeParams.Loader = new CustomLoader(beforeParams.CustomQuery, Factory);
+			AutoFlushIfRequired(beforeParams.Loader.QuerySpaces);
+
+			beforeParams.Success = false;
+			dontFlushFromFind++;
+
+			return beforeParams;
 		}
 
 		/// <summary></summary>
@@ -2794,6 +2797,32 @@ namespace NHibernate.Impl
 			public BeforeListParams(CriteriaImpl criteria)
 			{
 				Criteria = criteria;
+			}
+		}
+
+		private class BeforeListUsingPlanParams
+		{
+			public IQueryExpression QueryExpression { get; set; }
+			public QueryParameters QueryParameters { get; set; }
+			public IQueryExpressionPlan Plan { get; set; }
+			public bool Success { get; set; }
+
+			public BeforeListUsingPlanParams(IQueryExpression queryExpression, QueryParameters queryParameters)
+			{
+				QueryExpression = queryExpression;
+				QueryParameters = queryParameters;
+			}
+		}
+
+		private class BeforeListCustomQueryParams
+		{
+			public ICustomQuery CustomQuery { get; set; } 
+			public CustomLoader Loader { get; set; }
+			public bool Success { get; set; }
+
+			public BeforeListCustomQueryParams(ICustomQuery customQuery)
+			{
+				CustomQuery = customQuery;
 			}
 		}
 	}
