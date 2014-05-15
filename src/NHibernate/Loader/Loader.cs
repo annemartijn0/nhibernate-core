@@ -1385,8 +1385,7 @@ namespace NHibernate.Loader
 			return reader;
 		}
 
-		private static void HandleExceptionsGetResultSet(DbCommand st, ISessionImplementor session, Exception sqle,
-			DbDataReader reader)
+		private static void HandleExceptionsGetResultSet(DbCommand st, ISessionImplementor session, Exception sqle, DbDataReader reader)
 		{
 			ADOExceptionReporter.LogExceptions(sqle);
 			session.Batcher.CloseCommand(st, reader);
