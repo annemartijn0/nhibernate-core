@@ -235,14 +235,13 @@ namespace NHibernate.Impl
 						}
 						catch (AggregateException aggregateException)
 						{
-							aggregateException.Handle(exception =>
+							foreach (var exception in aggregateException.Flatten().InnerExceptions)
 							{
-								if (exception is HibernateException) // This we know how to handle.
-								{
-									throw exception;
-								}
-								throw Convert(exception, "Unable to perform find");
-							});
+								// Do not call Convert on HibernateExceptions
+								if (!(exception is HibernateException))
+									throw Convert(exception, "Unable to perform find");
+								throw;
+							}
 						}
 						catch (HibernateException)
 						{

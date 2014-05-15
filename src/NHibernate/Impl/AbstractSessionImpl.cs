@@ -122,20 +122,23 @@ namespace NHibernate.Impl
 
 		public virtual IList List(IQueryExpression queryExpression, QueryParameters parameters)
 		{
-			var results = (IList)typeof(List<>).MakeGenericType(queryExpression.Type)
-												 .GetConstructor(System.Type.EmptyTypes)
-												 .Invoke(null);
+			var results = BeforeList(queryExpression);
 			List(queryExpression, parameters, results);
 			return results;
 		}
 
 		public virtual Task<IList> ListAsync(IQueryExpression queryExpression, QueryParameters parameters, CancellationToken cancellationToken)
 		{
-			var results = (IList)typeof(List<>).MakeGenericType(queryExpression.Type)
-												 .GetConstructor(System.Type.EmptyTypes)
-												 .Invoke(null);
+			var results = BeforeList(queryExpression);
 			return ListAsync(queryExpression, parameters, results, cancellationToken)
 				.ContinueWith(_ => results, cancellationToken);
+		}
+
+		private static IList BeforeList(IQueryExpression queryExpression)
+		{
+			return (IList)typeof(List<>).MakeGenericType(queryExpression.Type)
+				.GetConstructor(System.Type.EmptyTypes)
+				.Invoke(null);
 		}
 
 		public abstract void List(IQueryExpression queryExpression, QueryParameters queryParameters, IList results);
