@@ -1307,32 +1307,13 @@ namespace NHibernate.Loader
 			DbDataReader rs = null;
 			try
 			{
-				Log.Info(st.CommandText);
-				// TODO NH: Callable
+				BeforeGetResultSet(st);
 				rs = session.Batcher.ExecuteReader(st);
-
-				//NH: this is checked outside the WrapResultSet because we
-				// want to avoid the syncronization overhead in the vast majority
-				// of cases where IsWrapResultSetsEnabled is set to false
-				if (session.Factory.Settings.IsWrapResultSetsEnabled)
-					rs = WrapResultSet(rs);
-
-				Dialect.Dialect dialect = session.Factory.Dialect;
-				if (!dialect.SupportsLimitOffset || !UseLimit(selection, dialect))
-				{
-					Advance(rs, selection);
-				}
-
-				if (autoDiscoverTypes)
-				{
-					AutoDiscoverTypes(rs);
-				}
-				return rs;
+				return EndGetResultSet(session, selection, autoDiscoverTypes, rs);
 			}
 			catch (Exception sqle)
 			{
-				ADOExceptionReporter.LogExceptions(sqle);
-				session.Batcher.CloseCommand(st, rs);
+				HandleExceptionsGetResultSet(st, session, sqle, rs);
 				throw;
 			}
 		}
@@ -1341,52 +1322,74 @@ namespace NHibernate.Loader
 		/// Fetch a <c>IDbCommand</c>, call <c>SetMaxRows</c> and then execute it,
 		/// advance to the first result and return an SQL <c>IDataReader</c> Asynchronously
 		/// </summary>
-		/// <param name="dbCommand">The <see cref="IDbCommand" /> to execute.</param>
+		/// <param name="st">The <see cref="IDbCommand" /> to execute.</param>
 		/// <param name="selection">The <see cref="RowSelection"/> to apply to the <see cref="IDbCommand"/> and <see cref="IDataReader"/>.</param>
 		/// <param name="autoDiscoverTypes">true if result types need to be auto-discovered by the loader; false otherwise.</param>
 		/// <param name="session">The <see cref="ISession" /> to load in.</param>
 		/// <param name="callable"></param>
 		/// <returns>An IDataReader advanced to the first record in RowSelection.</returns>
-		protected Task<DbDataReader> GetResultSetAsync(DbCommand dbCommand, CancellationToken cancellationToken, bool autoDiscoverTypes, bool callable, RowSelection selection, ISessionImplementor session)
+		protected Task<DbDataReader> GetResultSetAsync(DbCommand st, CancellationToken cancellationToken, bool autoDiscoverTypes, bool callable, RowSelection selection, ISessionImplementor session)
 		{
-			Log.Info(dbCommand.CommandText);
-
+			BeforeGetResultSet(st);
 			return session.Batcher
-				.ExecuteReaderAsync(dbCommand, cancellationToken)
+				.ExecuteReaderAsync(st, cancellationToken)
 				.ContinueWith(task =>
-					EndGetResultSet(task, dbCommand, session, selection, autoDiscoverTypes), cancellationToken);
+				{
+					DbDataReader reader = null;
+					try
+					{
+						reader = task.Result;
+						return EndGetResultSet(session, selection, autoDiscoverTypes, reader);
+					}
+					catch (AggregateException aggregateException)
+					{
+						foreach (var exception in aggregateException.Flatten().InnerExceptions)
+						{
+							HandleExceptionsGetResultSet(st, session, exception, reader);							
+						}
+						throw;						
+					}
+					catch (Exception sqle)
+					{
+						HandleExceptionsGetResultSet(st, session, sqle, reader);
+						throw;
+					}
+				});
 		}
 
-		private DbDataReader EndGetResultSet(Task<DbDataReader> task, DbCommand dbCommand, ISessionImplementor session, RowSelection selection, bool autoDiscoverTypes)
+		private static void BeforeGetResultSet(DbCommand st)
 		{
-			DbDataReader reader = null;
-			try
-			{
-				reader = task.Result;
-				//NH: this is checked outside the WrapResultSet because we
-				// want to avoid the syncronization overhead in the vast majority
-				// of cases where IsWrapResultSetsEnabled is set to false
-				if (session.Factory.Settings.IsWrapResultSetsEnabled)
-					reader = WrapResultSet(reader);
+			Log.Info(st.CommandText);
+			// TODO NH: Callable
+		}
 
-				Dialect.Dialect dialect = session.Factory.Dialect;
-				if (!dialect.SupportsLimitOffset || !UseLimit(selection, dialect))
-				{
-					Advance(reader, selection);
-				}
+		private DbDataReader EndGetResultSet(ISessionImplementor session, RowSelection selection, bool autoDiscoverTypes,
+			DbDataReader reader)
+		{
+			//NH: this is checked outside the WrapResultSet because we
+			// want to avoid the syncronization overhead in the vast majority
+			// of cases where IsWrapResultSetsEnabled is set to false
+			if (session.Factory.Settings.IsWrapResultSetsEnabled)
+				reader = WrapResultSet(reader);
 
-				if (autoDiscoverTypes)
-				{
-					AutoDiscoverTypes(reader);
-				}
-				return reader;
-			}
-			catch (Exception sqle)
+			Dialect.Dialect dialect = session.Factory.Dialect;
+			if (!dialect.SupportsLimitOffset || !UseLimit(selection, dialect))
 			{
-				ADOExceptionReporter.LogExceptions(sqle);
-				session.Batcher.CloseCommand(dbCommand, reader);
-				throw;
+				Advance(reader, selection);
 			}
+
+			if (autoDiscoverTypes)
+			{
+				AutoDiscoverTypes(reader);
+			}
+			return reader;
+		}
+
+		private static void HandleExceptionsGetResultSet(DbCommand st, ISessionImplementor session, Exception sqle,
+			DbDataReader reader)
+		{
+			ADOExceptionReporter.LogExceptions(sqle);
+			session.Batcher.CloseCommand(st, reader);
 		}
 
 
