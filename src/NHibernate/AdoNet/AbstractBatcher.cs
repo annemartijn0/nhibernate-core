@@ -212,12 +212,7 @@ namespace NHibernate.AdoNet
 
 		public virtual DbDataReader ExecuteReader(DbCommand cmd)
 		{
-			CheckReaders();
-			LogCommand(cmd);
-			Prepare(cmd);
-			Stopwatch duration = null;
-			if (Log.IsDebugEnabled)
-				duration = Stopwatch.StartNew();
+            var duration = PrepareExecuteReader(cmd);
 			DbDataReader reader = null;
 			try
 			{
@@ -225,17 +220,12 @@ namespace NHibernate.AdoNet
 			}
 			catch (Exception e)
 			{
-				e.Data["actual-sql-query"] = cmd.CommandText;
-				Log.Error("Could not execute query: " + cmd.CommandText, e);
-				throw;
+			    HandleExceptionsExecuteReader(cmd, e);
+			    throw;
 			}
 			finally
 			{
-				if (Log.IsDebugEnabled && duration != null && reader != null)
-				{
-					Log.DebugFormat("ExecuteReader took {0} ms", duration.ElapsedMilliseconds);
-					_readersDuration[reader] = duration;
-				}
+				FinallyExecuteReader(duration, reader);
 			}
 
 			if (!_factory.ConnectionProvider.Driver.SupportsMultipleOpenReaders)
@@ -248,22 +238,46 @@ namespace NHibernate.AdoNet
 			return reader;
 		}
 
-		/// <summary>
+	    /// <summary>
 		/// Asynchronously gets an <see cref="IDataReader"/> by calling ExecuteReaderAsync on the <see cref="IDbCommand"/>.
 		/// </summary>
-		/// <param name="dbCommand">The <see cref="IDbCommand"/> to execute to get the <see cref="IDataReader"/>. Should be of type <see cref="System.Data.SqlClient.SqlCommand"/></param>
+        /// <param name="cmd">The <see cref="IDbCommand"/> to execute to get the <see cref="IDataReader"/>. Should be of type <see cref="System.Data.SqlClient.SqlCommand"/></param>
 		/// <param name="cancellationToken">The <see cref="CancellationToken"/> propagates notification that operations should be canceled.</param>
 		/// <returns>The <see cref="IDataReader"/> from the <see cref="IDbCommand"/>.</returns>
 		/// <remarks>
 		/// The Batcher is responsible for ensuring that all of the Drivers rules for how many open
 		/// <see cref="IDataReader"/>s it can have are followed.
 		/// </remarks>
-		public Task<DbDataReader> ExecuteReaderAsync(DbCommand dbCommand, CancellationToken cancellationToken)
+        public Task<DbDataReader> ExecuteReaderAsync(DbCommand cmd, CancellationToken cancellationToken)
 		{
-			var stopwatch = PrepareExecuteReader(dbCommand);
-
-			return dbCommand.ExecuteReaderAsync(cancellationToken)
-				.ContinueWith(task => EndExecuteReader(task, stopwatch), TaskContinuationOptions.NotOnCanceled);
+            var duration = PrepareExecuteReader(cmd);
+            DbDataReader reader = null;
+            return cmd.ExecuteReaderAsync(cancellationToken)
+                .ContinueWith(task =>
+                {
+                    try
+                    {
+                        reader = task.Result;
+                        return EndExecuteReader(reader);
+                    }
+                    catch (AggregateException aggregateException)
+                    {
+                        foreach (var e in aggregateException.Flatten().InnerExceptions)
+                        {
+                            HandleExceptionsExecuteReader(cmd, e);                            
+                        }
+                        throw;
+                    }
+                    catch (Exception e)
+                    {
+                        HandleExceptionsExecuteReader(cmd, e);
+                        throw;
+                    }
+                    finally
+                    {
+                        FinallyExecuteReader(duration, reader);
+                    }
+                }, TaskContinuationOptions.NotOnCanceled);
 		}
 
 		private Stopwatch PrepareExecuteReader(DbCommand cmd)
@@ -279,22 +293,23 @@ namespace NHibernate.AdoNet
 			return duration;
 		}
 
-		private DbDataReader EndExecuteReader(Task<DbDataReader> task, Stopwatch stopwatch)
-		{
-			DbDataReader reader = null;
-			try
-			{
-				reader = task.Result;
-			}
-			finally
-			{
-				if (Log.IsDebugEnabled && stopwatch != null && reader != null)
-				{
-					Log.DebugFormat("ExecuteReader took {0} ms", stopwatch.ElapsedMilliseconds);
-					_readersDuration[reader] = stopwatch;
-				}
-			}
+        private static void HandleExceptionsExecuteReader(DbCommand cmd, Exception e)
+        {
+            e.Data["actual-sql-query"] = cmd.CommandText;
+            Log.Error("Could not execute query: " + cmd.CommandText, e);
+        }
 
+	    private void FinallyExecuteReader(Stopwatch duration, DbDataReader reader)
+	    {
+            if (Log.IsDebugEnabled && duration != null && reader != null)
+            {
+                Log.DebugFormat("ExecuteReader took {0} ms", duration.ElapsedMilliseconds);
+                _readersDuration[reader] = duration;
+            }
+	    }
+
+        private DbDataReader EndExecuteReader(DbDataReader reader)
+		{
 			if (!_factory.ConnectionProvider.Driver.SupportsMultipleOpenReaders)
 			{
 				reader = new NHybridDataReader(reader);
