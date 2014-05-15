@@ -1942,8 +1942,7 @@ namespace NHibernate.Impl
 				}
 				finally
 				{
-					dontFlushFromFind--;
-					AfterOperation(success);
+					FinallyList(success);
 				}
 			}
 		}
@@ -1970,14 +1969,13 @@ namespace NHibernate.Impl
 					}
 					catch (AggregateException aggregateException)
 					{
-						aggregateException.Handle(exception =>
+						foreach (var sqle in aggregateException.Flatten().InnerExceptions)
 						{
-							if (exception is HibernateException) // This we know how to handle.
-							{
-								throw exception;
-							}
-							throw Convert(exception, "Unable to perform find");
-						});
+							// Do not call Convert on HibernateExceptions
+							if (!(sqle is HibernateException))
+								throw Convert(sqle, "Unable to perform find");
+						}
+						throw;
 					}
 					catch (HibernateException)
 					{
@@ -1990,8 +1988,7 @@ namespace NHibernate.Impl
 					}
 					finally
 					{
-						dontFlushFromFind--;
-						AfterOperation(success);
+						FinallyList(success);
 					}
 
 					sessionIdLoggingContext.Dispose();
@@ -2004,7 +2001,6 @@ namespace NHibernate.Impl
 
 			string[] implementors = Factory.GetImplementors(beforeListParams.Criteria.EntityOrClassName);
 			beforeListParams.Size = implementors.Length;
-
 			beforeListParams.Loaders = new CriteriaLoader[beforeListParams.Size];
 			ISet<string> spaces = new HashSet<string>();
 
@@ -2020,11 +2016,16 @@ namespace NHibernate.Impl
 
 				spaces.UnionWith(beforeListParams.Loaders[i].QuerySpaces);
 			}
-
 			AutoFlushIfRequired(spaces);
-
 			dontFlushFromFind++;
+
 			return beforeListParams;
+		}
+
+		public void FinallyList(bool success)
+		{
+			dontFlushFromFind--;
+			AfterOperation(success);
 		}
 
 		public bool Contains(object obj)
