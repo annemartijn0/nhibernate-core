@@ -86,61 +86,45 @@ namespace NHibernate.Hql.Ast.ANTLR
 
 		public IList List(ISessionImplementor session, QueryParameters queryParameters)
 		{
-			// Delegate to the QueryLoader...
-			ErrorIfDML();
-			var query = ( QueryNode ) _sqlAst;
-			bool hasLimit = queryParameters.RowSelection != null && queryParameters.RowSelection.DefinesLimits;
-			bool needsDistincting = ( query.GetSelectClause().IsDistinct || hasLimit ) && ContainsCollectionFetches;
+			var beforeParams = BeforeList(new BeforeListParams(queryParameters));
+			IList results = _queryLoader.List(session, beforeParams.QueryParametersToUse);
 
-			QueryParameters queryParametersToUse;
-
-			if ( hasLimit && ContainsCollectionFetches ) 
-			{
-				log.Warn( "firstResult/maxResults specified with collection fetch; applying in memory!" );
-				var selection = new RowSelection
-											{
-												FetchSize = queryParameters.RowSelection.FetchSize,
-												Timeout = queryParameters.RowSelection.Timeout
-											};
-				queryParametersToUse = queryParameters.CreateCopyUsing( selection );
-			}
-			else 
-			{
-				queryParametersToUse = queryParameters;
-			}
-
-			IList results = _queryLoader.List(session, queryParametersToUse);
-
-			return ResultsOrDistinctResults(queryParameters, needsDistincting, hasLimit, results);
+			return ResultsOrDistinctResults(queryParameters, beforeParams.NeedsDistincting, beforeParams.HasLimit, results);
 		}
 
 		public Task<IList> ListAsync(ISessionImplementor session, QueryParameters queryParameters, CancellationToken cancellationToken)
 		{
+			var beforeParams = BeforeList(new BeforeListParams(queryParameters));
+
+			return _queryLoader.ListAsync(session, beforeParams.QueryParametersToUse, cancellationToken)
+				.ContinueWith(task => ResultsOrDistinctResults(queryParameters, beforeParams.NeedsDistincting, beforeParams.HasLimit, task.Result), cancellationToken);
+		}
+
+		private BeforeListParams BeforeList(BeforeListParams beforeParams)
+		{
 			// Delegate to the QueryLoader...
 			ErrorIfDML();
 			var query = (QueryNode)_sqlAst;
-			bool hasLimit = queryParameters.RowSelection != null && queryParameters.RowSelection.DefinesLimits;
-			bool needsDistincting = (query.GetSelectClause().IsDistinct || hasLimit) && ContainsCollectionFetches;
+			beforeParams.HasLimit = beforeParams.QueryParameters.RowSelection != null && beforeParams.QueryParameters.RowSelection.DefinesLimits;
+			beforeParams.NeedsDistincting = (query.GetSelectClause().IsDistinct || beforeParams.HasLimit) && ContainsCollectionFetches;
 
 			QueryParameters queryParametersToUse;
 
-			if (hasLimit && ContainsCollectionFetches)
+			if (beforeParams.HasLimit && ContainsCollectionFetches)
 			{
 				log.Warn("firstResult/maxResults specified with collection fetch; applying in memory!");
 				var selection = new RowSelection
 				{
-					FetchSize = queryParameters.RowSelection.FetchSize,
-					Timeout = queryParameters.RowSelection.Timeout
+					FetchSize = beforeParams.QueryParameters.RowSelection.FetchSize,
+					Timeout = beforeParams.QueryParameters.RowSelection.Timeout
 				};
-				queryParametersToUse = queryParameters.CreateCopyUsing(selection);
+				beforeParams.QueryParametersToUse = beforeParams.QueryParameters.CreateCopyUsing(selection);
 			}
 			else
 			{
-				queryParametersToUse = queryParameters;
+				beforeParams.QueryParametersToUse = beforeParams.QueryParameters;
 			}
-
-			return _queryLoader.ListAsync(session, queryParametersToUse, cancellationToken)
-				.ContinueWith(task => ResultsOrDistinctResults(queryParameters, needsDistincting, hasLimit, task.Result), cancellationToken);
+			return beforeParams;
 		}
 
 		private static IList ResultsOrDistinctResults(QueryParameters queryParameters, bool needsDistincting, bool hasLimit,
@@ -467,6 +451,19 @@ namespace NHibernate.Hql.Ast.ANTLR
 			if (_sqlAst.NeedsExecutor)
 			{
 				throw new QueryExecutionRequestException("Not supported for DML operations", _queryIdentifier);
+			}
+		}
+
+		private class BeforeListParams
+		{
+			public QueryParameters QueryParameters { get; set; }
+			public bool HasLimit{ get; set; }
+			public bool NeedsDistincting{ get; set; }
+			public QueryParameters QueryParametersToUse { get; set; }
+
+			public BeforeListParams(Engine.QueryParameters queryParameters)
+			{
+				QueryParameters = queryParameters;
 			}
 		}
 	}
