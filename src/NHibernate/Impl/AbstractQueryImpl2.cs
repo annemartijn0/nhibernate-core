@@ -31,9 +31,7 @@ namespace NHibernate.Impl
 
 		public override int ExecuteUpdate()
 		{
-			VerifyParameters();
-			var namedParams = NamedParams;
-			Before();
+			var namedParams = BeforeList();
 			try
 			{
 				return Session.ExecuteUpdate(ExpandParameters(namedParams), GetQueryParameters(namedParams));
@@ -46,9 +44,7 @@ namespace NHibernate.Impl
 
 		public override IEnumerable Enumerable()
 		{
-			VerifyParameters();
-			var namedParams = NamedParams;
-			Before();
+			var namedParams = BeforeList();
 			try
 			{
 				return Session.Enumerable(ExpandParameters(namedParams), GetQueryParameters(namedParams));
@@ -61,9 +57,7 @@ namespace NHibernate.Impl
 
 		public override IEnumerable<T> Enumerable<T>()
 		{
-			VerifyParameters();
-			var namedParams = NamedParams;
-			Before();
+			var namedParams = BeforeList();
 			try
 			{
 				return Session.Enumerable<T>(ExpandParameters(namedParams), GetQueryParameters(namedParams));
@@ -76,9 +70,7 @@ namespace NHibernate.Impl
 
 		public override IList List()
 		{
-			VerifyParameters();
-			var namedParams = NamedParams;
-			Before();
+			var namedParams = BeforeList();
 			try
 			{
 				return Session.List(ExpandParameters(namedParams), GetQueryParameters(namedParams));
@@ -96,16 +88,9 @@ namespace NHibernate.Impl
 
 		public override Task<IList> ListAsync(CancellationToken cancellationToken)
 		{
-			VerifyParameters();
-			var namedParams = NamedParams;
-			Before();
-
+			var namedParams = BeforeList();
 			if (cancellationToken.IsCancellationRequested)
-			{
-				var taskCompletionSource = new TaskCompletionSource<IList>();
-				taskCompletionSource.SetCanceled();
-				return taskCompletionSource.Task;
-			}
+				return CanceledTask<IList>();
 			return Session.ListAsync(ExpandParameters(namedParams), GetQueryParameters(namedParams), cancellationToken)
 				.ContinueWith(task =>
 				{
@@ -122,9 +107,7 @@ namespace NHibernate.Impl
 
 		public override void List(IList results)
 		{
-			VerifyParameters();
-			var namedParams = NamedParams;
-			Before();
+			var namedParams = BeforeList();
 			try
 			{
 				Session.List(ExpandParameters(namedParams), GetQueryParameters(namedParams), results);
@@ -137,9 +120,7 @@ namespace NHibernate.Impl
 
 		public override IList<T> List<T>()
 		{
-			VerifyParameters();
-			var namedParams = NamedParams;
-			Before();
+			var namedParams = BeforeList();
 			try
 			{
 				return Session.List<T>(ExpandParameters(namedParams), GetQueryParameters(namedParams));
@@ -161,9 +142,7 @@ namespace NHibernate.Impl
 			{
 				return CanceledTask<IList<T>>();
 			}
-			VerifyParameters();
-			var namedParams = NamedParams;
-			Before();
+			var namedParams = BeforeList();
 			return Session.ListAsync<T>(ExpandParameters(namedParams), GetQueryParameters(namedParams), cancellationToken)
 				.ContinueWith(task =>
 				{
@@ -176,6 +155,13 @@ namespace NHibernate.Impl
 						After();
 					}
 				});
+		}
+
+		private IDictionary<string, TypedValue> BeforeList()
+		{
+			VerifyParameters();
+			Before();
+			return NamedParams;
 		}
 
 		private static Task<T> CanceledTask<T>()
