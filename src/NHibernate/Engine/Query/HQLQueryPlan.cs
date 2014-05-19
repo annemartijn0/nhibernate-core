@@ -88,77 +88,65 @@ namespace NHibernate.Engine.Query
 
 		public void PerformList(QueryParameters queryParameters, ISessionImplementor session, IList results)
 		{
-			LogPerformList(queryParameters, session);
-			var needsLimit = NeedsLimit(queryParameters);
-			QueryParameters queryParametersToUse;
-			if (needsLimit)
-			{
-				Log.Warn("firstResult/maxResults specified on polymorphic query; applying in memory!");
-				RowSelection selection = new RowSelection();
-				selection.FetchSize = queryParameters.RowSelection.FetchSize;
-				selection.Timeout = queryParameters.RowSelection.Timeout;
-				queryParametersToUse = queryParameters.CreateCopyUsing(selection);
-			}
-			else
-			{
-				queryParametersToUse = queryParameters;
-			}
-
-			IList combinedResults = results ?? new List<object>();
-			IdentitySet distinction = new IdentitySet();
-			int includedCount = -1;
+			var beforeParams = BeforePerformList(new BeforePerformListParams(queryParameters, session, results));
 			for (int i = 0; i < Translators.Length; i++)
 			{
-				IList tmp = Translators[i].List(session, queryParametersToUse);
-				if (needsLimit)
+				IList tmp = Translators[i].List(session, beforeParams.QueryParametersToUse);
+				if (beforeParams.NeedsLimit)
 				{
-					if (AddToLimitedList(queryParameters, tmp, distinction, includedCount, combinedResults)) return;
+					if (AddToLimitedList(queryParameters, tmp, beforeParams.Distinction, beforeParams.IncludedCount, beforeParams.CombinedResults))
+						return; // break the outer loop !!!
 				}
 				else
-					ArrayHelper.AddAll(combinedResults, tmp);
+					ArrayHelper.AddAll(beforeParams.CombinedResults, tmp);
 			}
 		}
 
 		public Task PerformListAsync(QueryParameters queryParameters, ISessionImplementor session, IList results, CancellationToken cancellationToken)
 		{
-			LogPerformList(queryParameters, session);
-			var needsLimit = NeedsLimit(queryParameters);
-			QueryParameters queryParametersToUse;
-			if (needsLimit)
-			{
-				Log.Warn("firstResult/maxResults specified on polymorphic query; applying in memory!");
-				RowSelection selection = new RowSelection();
-				selection.FetchSize = queryParameters.RowSelection.FetchSize;
-				selection.Timeout = queryParameters.RowSelection.Timeout;
-				queryParametersToUse = queryParameters.CreateCopyUsing(selection);
-			}
-			else
-			{
-				queryParametersToUse = queryParameters;
-			}
-
-			IList combinedResults = results ?? new List<object>();
-			IdentitySet distinction = new IdentitySet();
-			int includedCount = -1;
-
+			var beforeParams = BeforePerformList(new BeforePerformListParams(queryParameters, session, results));
 			var tasks = new Task<IList>[Translators.Length];
+
 			for (int i = 0; i < Translators.Length; i++)
 			{
-				tasks[i] = Translators[i].ListAsync(session, queryParametersToUse, cancellationToken);
+				tasks[i] = Translators[i].ListAsync(session, beforeParams.QueryParametersToUse, cancellationToken);
 			}
-
 			return Task.Factory.ContinueWhenAll(tasks, delegate
 			{
 				foreach (IList tmp in tasks.Select(task => task.Result))
 				{
-					if (needsLimit)
+					if (beforeParams.NeedsLimit)
 					{
-						if (AddToLimitedList(queryParameters, tmp, distinction, includedCount, combinedResults)) return;
+						if (AddToLimitedList(queryParameters, tmp, beforeParams.Distinction, beforeParams.IncludedCount, beforeParams.CombinedResults))
+							return; // break the outer loop !!!
 					}
 					else
-						ArrayHelper.AddAll(combinedResults, tmp);
+						ArrayHelper.AddAll(beforeParams.CombinedResults, tmp);
 				}
 			}, cancellationToken);
+		}
+
+		private BeforePerformListParams BeforePerformList(BeforePerformListParams beforeParams)
+		{
+			LogPerformList(beforeParams.QueryParameters, beforeParams.Session);
+			beforeParams.NeedsLimit = NeedsLimit(beforeParams.QueryParameters);
+			if (beforeParams.NeedsLimit)
+			{
+				Log.Warn("firstResult/maxResults specified on polymorphic query; applying in memory!");
+				RowSelection selection = new RowSelection();
+				selection.FetchSize = beforeParams.QueryParameters.RowSelection.FetchSize;
+				selection.Timeout = beforeParams.QueryParameters.RowSelection.Timeout;
+				beforeParams.QueryParametersToUse = beforeParams.QueryParameters.CreateCopyUsing(selection);
+			}
+			else
+			{
+				beforeParams.QueryParametersToUse = beforeParams.QueryParameters;
+			}
+
+			beforeParams.CombinedResults = beforeParams.Results ?? new List<object>();
+			beforeParams.Distinction = new IdentitySet();
+			beforeParams.IncludedCount = -1;
+			return beforeParams;
 		}
 
 		private void LogPerformList(QueryParameters queryParameters, ISessionImplementor session)
@@ -334,5 +322,25 @@ namespace NHibernate.Engine.Query
             SqlStrings = sqlStringList.ToArray();
             QuerySpaces = combinedQuerySpaces;
         }
+
+		private class BeforePerformListParams
+		{
+
+			public QueryParameters QueryParameters { get; set; }
+			public ISessionImplementor Session { get; set; }
+			public IList Results { get; set; }
+			public bool NeedsLimit { get; set; }
+			public QueryParameters QueryParametersToUse { get; set; }
+			public IList CombinedResults { get; set; }
+			public IdentitySet Distinction { get; set; }
+			public int IncludedCount { get; set; }
+
+			public BeforePerformListParams(QueryParameters queryParameters, ISessionImplementor session, IList results)
+			{
+				QueryParameters = queryParameters;
+				Session = session;
+				Results = results;
+			}
+		}
     }
 }
