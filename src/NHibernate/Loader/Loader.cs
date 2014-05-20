@@ -267,7 +267,7 @@ namespace NHibernate.Loader
 				EndDoQueryAndInitializeNonLazyCollectionsAsync(beforeParams.PersistenceContext, beforeParams.DefaultReadOnlyOrig);
 				return CanceledIListTask();
 			}
-			return task.ContinueWith(_ =>
+			return task.ContinueWith(delegate
 				{
 					try
 					{

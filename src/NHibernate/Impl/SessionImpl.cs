@@ -1963,7 +1963,7 @@ namespace NHibernate.Impl
 			}
 
 			return Task.Factory
-				.ContinueWhenAll(tasks, _ =>
+				.ContinueWhenAll(tasks, delegate
 				{
 					bool success = false;
 					try
